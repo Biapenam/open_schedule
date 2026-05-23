@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <!-- 标题行：日期 + 应用名 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="今日课程"
+            android:textSize="13sp"
+            android:textColor="#FF6C63FF"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_app_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open Schedule"
+            android:textSize="10sp"
+            android:textColor="#88888888" />
+
+    </LinearLayout>
+
+    <!-- 分割线：用 TextView 代替 View（Widget 不支持 View 标签）-->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:background="#1A6C63FF"
+        android:text="" />
+
+    <!-- 课程条目 1 -->
+    <TextView
+        android:id="@+id/widget_course_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="12sp"
+        android:textColor="#FF1A1A2E"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:paddingBottom="3dp" />
+
+    <!-- 课程条目 2 -->
+    <TextView
+        android:id="@+id/widget_course_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="12sp"
+        android:textColor="#FF1A1A2E"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:paddingBottom="3dp" />
+
+    <!-- 课程条目 3 -->
+    <TextView
+        android:id="@+id/widget_course_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="12sp"
+        android:textColor="#FF1A1A2E"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:paddingBottom="3dp" />
+
+    <!-- 底部提示（还有N节课 / 共N节课） -->
+    <TextView
+        android:id="@+id/widget_more"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="11sp"
+        android:textColor="#888888AA" />
+
+</LinearLayout>
