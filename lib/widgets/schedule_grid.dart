@@ -6,7 +6,7 @@ import 'course_detail_sheet.dart';
 import 'dart:math' as math;
 
 const double _cellHeight = 58.0;
-const double _sectionLabelWidth = 34.0;
+const double _sectionLabelWidth = 44.0;
 
 class ScheduleGrid extends StatefulWidget {
   final List<Course> courses;
@@ -37,6 +37,7 @@ class ScheduleGrid extends StatefulWidget {
 class _ScheduleGridState extends State<ScheduleGrid> {
   final CourseService _service = CourseService();
   List<String> _startTimes = [];
+  int _duration = 45;
 
   @override
   void initState() {
@@ -46,9 +47,11 @@ class _ScheduleGridState extends State<ScheduleGrid> {
 
   Future<void> _loadTimes() async {
     final times = await _service.loadSectionStartTimes();
+    final dur = await _service.loadSectionDuration();
     if (mounted) {
       setState(() {
         _startTimes = times;
+        _duration = dur;
       });
     }
   }
@@ -60,6 +63,9 @@ class _ScheduleGridState extends State<ScheduleGrid> {
       return defaultSectionStartTimes[idx];
     return '08:00';
   }
+
+  String _getEndTime(int section) =>
+      _service.calcEndTime(_getStartTime(section), _duration);
 
   /// 推算该周周一日期
   DateTime _getWeekMonday() {
@@ -205,13 +211,16 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                     children: [
                       Text('$section',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF6C63FF).withOpacity(0.6),
                           )),
                       Text(_getStartTime(section),
                           style: const TextStyle(
-                              fontSize: 8, color: Color(0xFFBBBBCC))),
+                              fontSize: 8, color: Color(0xFF8888AA))),
+                      Text(_getEndTime(section),
+                          style: const TextStyle(
+                              fontSize: 7, color: Color(0xFFBBBBCC))),
                     ],
                   ),
                 );

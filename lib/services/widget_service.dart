@@ -43,13 +43,22 @@ class WidgetService {
 
       // 构建 JSON
       final courseList = todayCourses.map((c) {
-        final idx = c.startSection - 1;
-        final startTime = idx < startTimes.length
-            ? startTimes[idx]
-            : (idx < defaultSectionStartTimes.length
-                ? defaultSectionStartTimes[idx]
+        final startIdx = c.startSection - 1;
+        final endIdx = c.endSection - 1;
+        final lastSectionIdx =
+            endIdx < startTimes.length ? endIdx : startIdx;
+        final startTime = startIdx < startTimes.length
+            ? startTimes[startIdx]
+            : (startIdx < defaultSectionStartTimes.length
+                ? defaultSectionStartTimes[startIdx]
                 : '08:00');
-        final endTime = _courseService.calcEndTime(startTime, duration);
+        final lastSectionStart = lastSectionIdx < startTimes.length
+            ? startTimes[lastSectionIdx]
+            : (lastSectionIdx < defaultSectionStartTimes.length
+                ? defaultSectionStartTimes[lastSectionIdx]
+                : '08:00');
+        final endTime =
+            _courseService.calcEndTime(lastSectionStart, duration);
         return {
           'name': c.name,
           'time': '$startTime-$endTime',

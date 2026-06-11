@@ -112,8 +112,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.0.4',
+                    version: 'v1.0.5',
                     isLatest: true,
+                    changes: [
+                      '课程表左侧时间列新增每节课结束时间显示',
+                      '修复桌面小卡片多节课程结束时间计算不准确的问题',
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  _ChangelogEntry(
+                    version: 'v1.0.4',
+                    isLatest: false,
                     changes: [
                       '新增应用内添加桌面小卡片入口',
                       '为桌面小卡片添加流程增加异常兜底提示',
@@ -336,7 +345,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _buildInfoTile('应用名称', 'Open Schedule'),
                     const Divider(height: 1),
-                    _buildInfoTile('版本', '1.0.4'),
+                    _buildInfoTile('版本', '1.0.5'),
                     const Divider(height: 1),
                     _buildInfoTile('开发者', 'Sora'),
                     const Divider(height: 1),
