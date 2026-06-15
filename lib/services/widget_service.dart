@@ -45,8 +45,7 @@ class WidgetService {
       final courseList = todayCourses.map((c) {
         final startIdx = c.startSection - 1;
         final endIdx = c.endSection - 1;
-        final lastSectionIdx =
-            endIdx < startTimes.length ? endIdx : startIdx;
+        final lastSectionIdx = endIdx < startTimes.length ? endIdx : startIdx;
         final startTime = startIdx < startTimes.length
             ? startTimes[startIdx]
             : (startIdx < defaultSectionStartTimes.length
@@ -57,8 +56,7 @@ class WidgetService {
             : (lastSectionIdx < defaultSectionStartTimes.length
                 ? defaultSectionStartTimes[lastSectionIdx]
                 : '08:00');
-        final endTime =
-            _courseService.calcEndTime(lastSectionStart, duration);
+        final endTime = _courseService.calcEndTime(lastSectionStart, duration);
         return {
           'name': c.name,
           'time': '$startTime-$endTime',

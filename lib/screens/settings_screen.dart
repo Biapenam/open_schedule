@@ -112,8 +112,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.0.5',
+                    version: 'v1.0.6',
                     isLatest: true,
+                    changes: [
+                      '修复在设置界面更新课程开始结束时间后，课程表界面时间不会更改的问题',
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  _ChangelogEntry(
+                    version: 'v1.0.5',
+                    isLatest: false,
                     changes: [
                       '课程表左侧时间列新增每节课结束时间显示',
                       '修复桌面小卡片多节课程结束时间计算不准确的问题',
@@ -345,7 +353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _buildInfoTile('应用名称', 'Open Schedule'),
                     const Divider(height: 1),
-                    _buildInfoTile('版本', '1.0.5'),
+                    _buildInfoTile('版本', '1.0.6'),
                     const Divider(height: 1),
                     _buildInfoTile('开发者', 'Sora'),
                     const Divider(height: 1),

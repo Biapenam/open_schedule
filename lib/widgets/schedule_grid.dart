@@ -45,6 +45,12 @@ class _ScheduleGridState extends State<ScheduleGrid> {
     _loadTimes();
   }
 
+  @override
+  void didUpdateWidget(ScheduleGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadTimes();
+  }
+
   Future<void> _loadTimes() async {
     final times = await _service.loadSectionStartTimes();
     final dur = await _service.loadSectionDuration();
