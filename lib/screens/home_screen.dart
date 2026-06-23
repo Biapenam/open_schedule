@@ -4,6 +4,7 @@ import '../models/course.dart';
 import '../services/course_service.dart';
 import '../services/widget_service.dart';
 import '../widgets/schedule_grid.dart';
+import '../widgets/schedule_manager_sheet.dart';
 import '../widgets/week_selector.dart';
 import 'add_course_screen.dart';
 import 'settings_screen.dart';
@@ -19,11 +20,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final CourseService _service = CourseService();
 
   List<Course> _courses = [];
-  int _currentWeek = 1;
+  int _currentWeek = 1; // 传给子组件：学期在范围内为真实值，否则为 -1
   int _selectedWeek = 1;
   int _totalWeeks = 20;
   int _dailySections = 12;
   bool _loading = true;
+
+  DateTime? _semesterStart;
+  bool _semesterEnded = false;
+  bool _semesterNotStarted = false;
+  bool _semesterNotSet = false;
+
+  String _scheduleName = '我的课表';
+  String? _scheduleId;
 
   late PageController _pageController;
   late AnimationController _fabController;
@@ -43,21 +52,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadData() async {
+    await _service.ensureMigrated();
+    final schedule = await _service.getActiveSchedule();
     final courses = await _service.loadCourses();
-    final start = await _service.loadSemesterStart();
-    final totalWeeks = await _service.loadTotalWeeks();
-    final dailySections = await _service.loadDailySections();
-    int currentWeek = 1;
+    final start = schedule?.semesterStart;
+    final totalWeeks = schedule?.totalWeeks ?? 20;
+    final dailySections = schedule?.dailySections ?? 12;
+
+    int rawWeek = 1;
+    bool ended = false;
+    bool notStarted = false;
+    bool notSet = false;
     if (start != null) {
-      currentWeek = _service.currentWeek(start).clamp(1, totalWeeks);
+      rawWeek = _service.currentWeek(start);
+      if (rawWeek > totalWeeks) {
+        ended = true;
+      } else if (rawWeek < 1) {
+        notStarted = true;
+      }
+    } else {
+      notSet = true;
     }
-    _pageController = PageController(initialPage: currentWeek - 1);
+
+    // 传给子组件的 currentWeek：学期在范围内才显示本周标记
+    final displayCurrentWeek =
+        (ended || notStarted || notSet) ? -1 : rawWeek.clamp(1, totalWeeks);
+    // PageView 初始页：学期结束定位最后一周，未设置/未开始定位第一周
+    final initialPage = ended
+        ? totalWeeks - 1
+        : (notStarted || notSet)
+            ? 0
+            : displayCurrentWeek - 1;
+
+    _pageController = PageController(initialPage: initialPage);
     setState(() {
       _courses = courses;
-      _currentWeek = currentWeek;
-      _selectedWeek = currentWeek;
+      _currentWeek = displayCurrentWeek;
+      _selectedWeek = (initialPage + 1).clamp(1, totalWeeks);
       _totalWeeks = totalWeeks;
       _dailySections = dailySections;
+      _semesterStart = start;
+      _semesterEnded = ended;
+      _semesterNotStarted = notStarted;
+      _semesterNotSet = notSet;
+      _scheduleName = schedule?.name ?? '我的课表';
+      _scheduleId = schedule?.id;
       _loading = false;
     });
     _fabController.forward();
@@ -104,6 +143,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadData();
   }
 
+  // ─── 课表管理 ──────────────────────────────────────────────
+
+  void _showScheduleManager() async {
+    await ScheduleManagerSheet.show(
+      context,
+      service: _service,
+      onChanged: () {
+        Navigator.pop(context);
+        _loadData();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -116,6 +168,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           children: [
             _buildHeader(),
+            if (_semesterEnded || _semesterNotStarted || _semesterNotSet)
+              _buildSemesterBanner(),
             WeekSelector(
               currentWeek: _currentWeek,
               selectedWeek: _selectedWeek,
@@ -141,6 +195,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     dailySections: _dailySections,
                     weekNumber: week,
                     currentWeek: _currentWeek,
+                    semesterStart: _semesterStart,
                   );
                 },
               ),
@@ -169,23 +224,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('我的课程表', style: Theme.of(context).textTheme.displayLarge)
-                  .animate()
-                  .fadeIn(duration: 400.ms)
-                  .slideX(begin: -0.2),
-              const SizedBox(height: 2),
-              Text(todayStr,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.7)))
-                  .animate()
-                  .fadeIn(delay: 100.ms, duration: 400.ms),
-            ],
+          GestureDetector(
+            onTap: _showScheduleManager,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_scheduleName,
+                            style: Theme.of(context).textTheme.displayLarge)
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .slideX(begin: -0.2),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF6C63FF), size: 28),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(todayStr,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.7)))
+                    .animate()
+                    .fadeIn(delay: 100.ms, duration: 400.ms),
+              ],
+            ),
           ),
           const Spacer(),
           IconButton(
@@ -201,5 +268,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
     );
+  }
+
+  Widget _buildSemesterBanner() {
+    Color color;
+    IconData icon;
+    String message;
+    VoidCallback onTap;
+
+    if (_semesterNotSet) {
+      color = const Color(0xFF6C63FF);
+      icon = Icons.info_outline_rounded;
+      message = '请先在设置中选择学期开始日期';
+      onTap = _openSettings;
+    } else if (_semesterEnded) {
+      color = const Color(0xFFFF9A3C);
+      icon = Icons.event_busy_rounded;
+      message = '「$_scheduleName」已结束，点击标题可创建新课表';
+      onTap = _showScheduleManager;
+    } else {
+      // notStarted
+      color = const Color(0xFF4FC3F7);
+      icon = Icons.hourglass_top_rounded;
+      final s = _semesterStart!;
+      message = '「$_scheduleName」将于 ${s.year}年${s.month}月${s.day}日 开始';
+      onTap = _openSettings;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(message,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: color)),
+              ),
+              Icon(Icons.chevron_right_rounded, color: color, size: 18),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
   }
 }

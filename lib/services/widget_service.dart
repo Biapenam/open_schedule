@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
+import '../models/course.dart';
 import '../services/course_service.dart';
 
 class WidgetService {
@@ -19,27 +20,38 @@ class WidgetService {
   /// 推送今日课程数据到桌面小组件
   Future<void> updateWidget() async {
     try {
+      await _courseService.ensureMigrated();
+      final schedule = await _courseService.getActiveSchedule();
       final courses = await _courseService.loadCourses();
-      final semesterStart = await _courseService.loadSemesterStart();
-      final totalWeeks = await _courseService.loadTotalWeeks();
-      final startTimes = await _courseService.loadSectionStartTimes();
-      final duration = await _courseService.loadSectionDuration();
+      final semesterStart = schedule?.semesterStart;
+      final totalWeeks = schedule?.totalWeeks ?? 20;
+      final startTimes =
+          schedule?.sectionStartTimes ?? defaultSectionStartTimes;
+      final duration = schedule?.sectionDuration ?? 45;
 
       final now = DateTime.now();
       final todayWeekday = now.weekday; // 1=周一
 
+      // 计算当前周，并判断是否在学期范围内
       int currentWeek = 1;
+      bool inSemester = true;
       if (semesterStart != null) {
-        currentWeek =
-            _courseService.currentWeek(semesterStart).clamp(1, totalWeeks);
+        final raw = _courseService.currentWeek(semesterStart);
+        currentWeek = raw;
+        inSemester = raw >= 1 && raw <= totalWeeks;
       }
 
-      // 筛选今天、本周的课程，按节次排序
-      final todayCourses = courses
-          .where((c) =>
-              c.dayOfWeek == todayWeekday && c.weeks.contains(currentWeek))
-          .toList()
-        ..sort((a, b) => a.startSection.compareTo(b.startSection));
+      // 学期未开始或已结束时不显示课程（空列表）
+      List<Course> todayCourses;
+      if (inSemester) {
+        todayCourses = courses
+            .where((c) =>
+                c.dayOfWeek == todayWeekday && c.weeks.contains(currentWeek))
+            .toList();
+        todayCourses.sort((a, b) => a.startSection.compareTo(b.startSection));
+      } else {
+        todayCourses = <Course>[];
+      }
 
       // 构建 JSON
       final courseList = todayCourses.map((c) {

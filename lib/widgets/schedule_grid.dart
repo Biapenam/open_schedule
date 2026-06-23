@@ -17,6 +17,7 @@ class ScheduleGrid extends StatefulWidget {
   final int dailySections;
   final int weekNumber;
   final int currentWeek;
+  final DateTime? semesterStart;
 
   const ScheduleGrid({
     super.key,
@@ -28,6 +29,7 @@ class ScheduleGrid extends StatefulWidget {
     required this.weekNumber,
     required this.currentWeek,
     this.dailySections = 12,
+    this.semesterStart,
   });
 
   @override
@@ -74,7 +76,14 @@ class _ScheduleGridState extends State<ScheduleGrid> {
       _service.calcEndTime(_getStartTime(section), _duration);
 
   /// 推算该周周一日期
+  /// 优先用学期开始日期计算（准确且不受学期结束影响），
+  /// 否则回退到用当前周与今日推算。
   DateTime _getWeekMonday() {
+    if (widget.semesterStart != null) {
+      return DateTime(widget.semesterStart!.year, widget.semesterStart!.month,
+              widget.semesterStart!.day)
+          .add(Duration(days: (widget.weekNumber - 1) * 7));
+    }
     final now = DateTime.now();
     final todayMonday = now.subtract(Duration(days: now.weekday - 1));
     return todayMonday

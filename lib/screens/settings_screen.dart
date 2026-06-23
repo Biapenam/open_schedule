@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../services/course_service.dart';
 import '../services/widget_service.dart';
+import '../widgets/schedule_manager_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final CourseService _service = CourseService();
 
+  String _scheduleName = '我的课表';
   DateTime? _semesterStart;
   int _totalWeeks = 20;
   int _dailySections = 12;
@@ -30,12 +32,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    final start = await _service.loadSemesterStart();
-    final weeks = await _service.loadTotalWeeks();
-    final sections = await _service.loadDailySections();
-    final duration = await _service.loadSectionDuration();
-    final times = await _service.loadSectionStartTimes();
+    await _service.ensureMigrated();
+    final schedule = await _service.getActiveSchedule();
+    final start = schedule?.semesterStart;
+    final weeks = schedule?.totalWeeks ?? 20;
+    final sections = schedule?.dailySections ?? 12;
+    final duration = schedule?.sectionDuration ?? 45;
+    final times =
+        schedule?.sectionStartTimes ?? await _service.loadSectionStartTimes();
     setState(() {
+      _scheduleName = schedule?.name ?? '我的课表';
       _semesterStart = start;
       _totalWeeks = weeks;
       _dailySections = sections;
@@ -43,6 +49,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _sectionStartTimes = times;
       _loading = false;
     });
+  }
+
+  Future<void> _openScheduleManager() async {
+    await ScheduleManagerSheet.show(
+      context,
+      service: _service,
+      onChanged: () {
+        Navigator.pop(context);
+        _load();
+      },
+    );
   }
 
   Future<void> _pickDate() async {
@@ -112,8 +129,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.0.6',
+                    version: 'v1.1.0',
                     isLatest: true,
+                    changes: [
+                      '新增多课表功能，支持新建、切换、重命名、删除多个课表',
+                      '学期结束后课表自动切换为空状态，不再错误顺延开始日期',
+                      '新增学期状态提示栏（未开始 / 进行中 / 已结束）',
+                      '标题栏支持点击课表名称快速切换课表',
+                      '旧版本数据自动迁移至新课表结构',
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  _ChangelogEntry(
+                    version: 'v1.0.6',
+                    isLatest: false,
                     changes: [
                       '修复在设置界面更新课程开始结束时间后，课程表界面时间不会更改的问题',
                     ],
@@ -257,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FF),
       appBar: AppBar(
-        title: const Text('学期设置'),
+        title: Text('$_scheduleName · 设置'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
@@ -268,6 +297,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // ── 课表管理 ──
+                _buildCard(
+                  title: '课表管理',
+                  icon: Icons.collections_bookmark_rounded,
+                  children: [
+                    ListTile(
+                      leading: _iconBox(Icons.swap_horiz_rounded),
+                      title: const Text('切换 / 管理课表',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A2E))),
+                      subtitle: Text('当前：$_scheduleName',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF8888AA))),
+                      trailing: const Icon(Icons.chevron_right_rounded,
+                          color: Color(0xFFCCCCDD)),
+                      onTap: _openScheduleManager,
+                    ),
+                  ],
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+
+                const SizedBox(height: 16),
+
                 // ── 学期信息 ──
                 _buildCard(
                   title: '学期信息',
@@ -353,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _buildInfoTile('应用名称', 'Open Schedule'),
                     const Divider(height: 1),
-                    _buildInfoTile('版本', '1.0.6'),
+                    _buildInfoTile('版本', '1.1.0'),
                     const Divider(height: 1),
                     _buildInfoTile('开发者', 'Sora'),
                     const Divider(height: 1),
