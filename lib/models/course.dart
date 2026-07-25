@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 class Course {
+  static const maxSection = 16;
   final String id;
   final String name;
   final String teacher;
@@ -17,11 +18,18 @@ class Course {
     required this.teacher,
     required this.location,
     required this.colorValue,
-    required this.weeks,
-    required this.dayOfWeek,
-    required this.startSection,
-    required this.endSection,
-  });
+    required List<int> weeks,
+    required int dayOfWeek,
+    required int startSection,
+    required int endSection,
+  })  : weeks = normalizeWeeks(weeks),
+        dayOfWeek = dayOfWeek.clamp(1, 7).toInt(),
+        startSection = startSection.clamp(1, maxSection).toInt(),
+        endSection = endSection.clamp(
+            startSection.clamp(1, maxSection), maxSection).toInt();
+
+  static List<int> normalizeWeeks(Iterable<int> weeks) =>
+      weeks.where((week) => week > 0).toSet().toList()..sort();
 
   // 深拷贝修改
   Course copyWith({
@@ -80,9 +88,9 @@ class Course {
             .toList()
         : <int>[];
 
-    final startSection = readInt('startSection', 1).clamp(1, 16).toInt();
+    final startSection = readInt('startSection', 1).clamp(1, maxSection).toInt();
     final endSection =
-        readInt('endSection', startSection).clamp(startSection, 16).toInt();
+        readInt('endSection', startSection).clamp(startSection, maxSection).toInt();
 
     return Course(
       id: readString('id'),

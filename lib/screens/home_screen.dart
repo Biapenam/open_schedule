@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _scheduleName = '我的课表';
   String? _scheduleId;
 
-  late PageController _pageController;
+  PageController? _pageController;
   late AnimationController _fabController;
 
   @override
@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fabController.dispose();
-    _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
@@ -75,8 +75,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     // 传给子组件的 currentWeek：学期在范围内才显示本周标记
-    final displayCurrentWeek =
-        (ended || notStarted || notSet) ? -1 : rawWeek.clamp(1, totalWeeks);
+    final displayCurrentWeek = (ended || notStarted || notSet)
+        ? -1
+        : rawWeek.clamp(1, totalWeeks).toInt();
     // PageView 初始页：学期结束定位最后一周，未设置/未开始定位第一周
     final initialPage = ended
         ? totalWeeks - 1
@@ -84,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ? 0
             : displayCurrentWeek - 1;
 
+    if (!mounted) return;
+    _pageController?.dispose();
     _pageController = PageController(initialPage: initialPage);
     setState(() {
       _courses = courses;
@@ -100,18 +103,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _loading = false;
     });
     _fabController.forward();
-    WidgetService().updateWidget();
+    await WidgetService().updateWidget();
   }
 
   Future<void> _refresh() async {
     final courses = await _service.loadCourses();
+    if (!mounted) return;
     setState(() => _courses = courses);
     WidgetService().updateWidget();
   }
 
   void _goToWeek(int week) {
     final target = week.clamp(1, _totalWeeks);
-    _pageController.animateToPage(target - 1,
+    _pageController?.animateToPage(target - 1,
         duration: 350.ms, curve: Curves.easeInOutCubic);
   }
 
@@ -140,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context,
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
     );
-    _loadData();
+    if (mounted) _loadData();
   }
 
   // ─── 课表管理 ──────────────────────────────────────────────
@@ -179,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
             Expanded(
               child: PageView.builder(
-                controller: _pageController,
+                controller: _pageController!,
                 itemCount: _totalWeeks,
                 onPageChanged: (page) =>
                     setState(() => _selectedWeek = page + 1),
