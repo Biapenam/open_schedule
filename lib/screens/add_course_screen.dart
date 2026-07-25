@@ -64,6 +64,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     final sections = await _service.loadDailySections();
     final times = await _service.loadSectionStartTimes();
     final duration = await _service.loadSectionDuration();
+    if (!mounted) return;
     setState(() {
       _dailySections = sections;
       _sectionStartTimes = times;
@@ -124,6 +125,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       await _service.addCourse(course);
     }
     await WidgetService().updateWidget();
+    if (!mounted) return;
     setState(() => _saving = false);
     if (mounted) Navigator.pop(context, true);
   }

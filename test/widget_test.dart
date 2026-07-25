@@ -11,7 +11,7 @@ void main() {
     await tester.pumpWidget(const ScheduleApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('我的课程表'), findsOneWidget);
+    expect(find.text('我的课表'), findsOneWidget);
     expect(find.text('第 1 周'), findsOneWidget);
   });
 }
