@@ -130,8 +130,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.1.1',
+                    version: 'v1.1.2',
                     isLatest: true,
+                    changes: [
+                      '优化了性能开销',
+                    ],
+                  ),
+                  _ChangelogEntry(
+                    version: 'v1.1.1',
+                    isLatest: false,
                     changes: [
                       '修复了一些已知问题',
                     ],
@@ -415,7 +422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _buildInfoTile('应用名称', 'Open Schedule'),
                     const Divider(height: 1),
-                    _buildInfoTile('版本', '1.1.1'),
+                    _buildInfoTile('版本', '1.1.2'),
                     const Divider(height: 1),
                     _buildInfoTile('开发者', 'Sora'),
                     const Divider(height: 1),

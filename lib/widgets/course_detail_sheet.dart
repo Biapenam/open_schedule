@@ -9,6 +9,8 @@ class CourseDetailSheet extends StatefulWidget {
   final VoidCallback onDeleted;
   final VoidCallback onEdited;
   final int totalWeeks;
+  final List<String> sectionStartTimes;
+  final int sectionDuration;
 
   const CourseDetailSheet({
     super.key,
@@ -16,6 +18,8 @@ class CourseDetailSheet extends StatefulWidget {
     required this.onDeleted,
     required this.onEdited,
     required this.totalWeeks,
+    required this.sectionStartTimes,
+    required this.sectionDuration,
   });
 
   @override
@@ -23,35 +27,26 @@ class CourseDetailSheet extends StatefulWidget {
 }
 
 class _CourseDetailSheetState extends State<CourseDetailSheet> {
-  final CourseService _service = CourseService();
-  List<String> _startTimes = [];
-  int _duration = 45;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTimes();
-  }
-
-  Future<void> _loadTimes() async {
-    final times = await _service.loadSectionStartTimes();
-    final duration = await _service.loadSectionDuration();
-    setState(() {
-      _startTimes = times;
-      _duration = duration;
-    });
-  }
-
   String _getStartTime(int section) {
     final idx = section - 1;
-    if (idx < _startTimes.length) return _startTimes[idx];
+    if (idx < widget.sectionStartTimes.length) {
+      return widget.sectionStartTimes[idx];
+    }
     if (idx < defaultSectionStartTimes.length)
       return defaultSectionStartTimes[idx];
     return '08:00';
   }
 
   String _getEndTime(int section) =>
-      _service.calcEndTime(_getStartTime(section), _duration);
+      _calcEndTime(_getStartTime(section), widget.sectionDuration);
+
+  String _calcEndTime(String startTime, int durationMinutes) {
+    final parts = startTime.split(':');
+    final h = int.tryParse(parts.first) ?? 8;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+    final total = h * 60 + m + durationMinutes;
+    return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {

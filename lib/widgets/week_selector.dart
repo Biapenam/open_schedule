@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class WeekSelector extends StatelessWidget {
   final int currentWeek;
@@ -67,7 +66,7 @@ class WeekSelector extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ).animate().scale(duration: 200.ms),
+                      ),
                     Text(
                       '第 $selectedWeek 周',
                       style: const TextStyle(
@@ -101,7 +100,7 @@ class WeekSelector extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 150.ms, duration: 400.ms).slideY(begin: 0.2);
+    );
   }
 
   void _showWeekPicker(BuildContext context) {
@@ -135,7 +134,7 @@ class _ArrowButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: 200.ms,
+        duration: const Duration(milliseconds: 200),
         width: 40,
         height: 40,
         decoration: BoxDecoration(
@@ -218,7 +217,7 @@ class _WeekPickerSheet extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onSelected(week),
                 child: AnimatedContainer(
-                  duration: 200.ms,
+                  duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6C63FF)
