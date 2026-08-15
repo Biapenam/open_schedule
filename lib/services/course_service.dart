@@ -17,7 +17,10 @@ class CourseService {
   static const _legacySectionDurationKey = 'section_duration';
 
   static const _uuid = Uuid();
-  static Future<void> _writeQueue = Future<void>.value();
+  // 写队列：串行化本实例的写入操作，避免交错写导致的数据竞争。
+  // 注意不能是 static：跨 testWidgets 的 FakeAsync 区域会残留未完成的
+  // Future 链，导致后续测试的写操作永远等待。
+  Future<void> _writeQueue = Future<void>.value();
   bool _migrated = false;
 
   Future<T> _serializeWrite<T>(Future<T> Function() operation) {
