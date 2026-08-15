@@ -17,7 +17,14 @@ class CourseService {
   static const _legacySectionDurationKey = 'section_duration';
 
   static const _uuid = Uuid();
+  static Future<void> _writeQueue = Future<void>.value();
   bool _migrated = false;
+
+  Future<T> _serializeWrite<T>(Future<T> Function() operation) {
+    final result = _writeQueue.then((_) => operation());
+    _writeQueue = result.then<void>((_) {}, onError: (_, __) {});
+    return result;
+  }
 
   String _coursesKey(String scheduleId) => 'courses_$scheduleId';
 
@@ -44,9 +51,17 @@ class CourseService {
     DateTime? start;
     if (rawStart != null) start = DateTime.tryParse(rawStart);
 
-    List<String> times = rawTimes != null
-        ? (jsonDecode(rawTimes) as List).map((e) => e.toString()).toList()
-        : List<String>.from(defaultSectionStartTimes);
+    List<String> times = List<String>.from(defaultSectionStartTimes);
+    if (rawTimes != null) {
+      try {
+        final decoded = jsonDecode(rawTimes);
+        if (decoded is List) {
+          times = decoded.map((e) => e.toString()).toList();
+        }
+      } catch (_) {
+        // 使用默认时间，避免损坏的旧配置阻塞应用启动。
+      }
+    }
 
     final id = _uuid.v4();
     final schedule = Schedule(
@@ -140,48 +155,54 @@ class CourseService {
 
   /// 创建新课表，返回创建的课表（不自动切换）
   Future<Schedule> createSchedule(String name) async {
-    final schedules = await loadSchedules();
-    final schedule = Schedule(
-      id: _uuid.v4(),
-      name: name.trim().isEmpty ? '新课表' : name.trim(),
-    );
-    await _saveSchedules([...schedules, schedule]);
-    return schedule;
+    return _serializeWrite(() async {
+      final schedules = await loadSchedules();
+      final schedule = Schedule(
+        id: _uuid.v4(),
+        name: name.trim().isEmpty ? '新课表' : name.trim(),
+      );
+      await _saveSchedules([...schedules, schedule]);
+      return schedule;
+    });
   }
 
   /// 重命名课表
   Future<void> renameSchedule(String id, String name) async {
-    final schedules = await loadSchedules();
-    final idx = schedules.indexWhere((s) => s.id == id);
-    if (idx == -1) return;
-    schedules[idx] = schedules[idx].copyWith(name: name);
-    await _saveSchedules(schedules);
+    await _serializeWrite(() async {
+      final schedules = await loadSchedules();
+      final idx = schedules.indexWhere((s) => s.id == id);
+      if (idx == -1) return;
+      schedules[idx] = schedules[idx].copyWith(name: name);
+      await _saveSchedules(schedules);
+    });
   }
 
   /// 删除课表（至少保留一个）。若删除的是当前激活课表，自动切换。
   Future<void> deleteSchedule(String id) async {
-    final schedules = await loadSchedules();
-    final remaining = schedules.where((s) => s.id != id).toList();
-    if (remaining.isEmpty) return; // 至少保留一个课表
-    await _saveSchedules(remaining);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_coursesKey(id));
-    final activeId = await getActiveScheduleId();
-    if (activeId == id) {
-      await setActiveScheduleId(remaining.first.id);
-    }
+    await _serializeWrite(() async {
+      final schedules = await loadSchedules();
+      final remaining = schedules.where((s) => s.id != id).toList();
+      if (remaining.isEmpty) return; // 至少保留一个课表
+      await _saveSchedules(remaining);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_coursesKey(id));
+      final activeId = await getActiveScheduleId();
+      if (activeId == id) await setActiveScheduleId(remaining.first.id);
+    });
   }
 
   /// 更新某个课表的元数据（不存在则新增）
   Future<void> saveScheduleMeta(Schedule updated) async {
-    final schedules = await loadSchedules();
-    final idx = schedules.indexWhere((s) => s.id == updated.id);
-    if (idx == -1) {
-      await _saveSchedules([...schedules, updated]);
-    } else {
-      schedules[idx] = updated;
-      await _saveSchedules(schedules);
-    }
+    await _serializeWrite(() async {
+      final schedules = await loadSchedules();
+      final idx = schedules.indexWhere((s) => s.id == updated.id);
+      if (idx == -1) {
+        await _saveSchedules([...schedules, updated]);
+      } else {
+        schedules[idx] = updated;
+        await _saveSchedules(schedules);
+      }
+    });
   }
 
   // ─── 课程 CRUD（作用于当前激活课表） ───────────────────────
@@ -210,35 +231,57 @@ class CourseService {
   }
 
   Future<void> saveCourses(List<Course> courses) async {
-    final id = await getActiveScheduleId();
-    if (id == null) return;
-    await saveCoursesFor(id, courses);
+    await _serializeWrite(() async {
+      final id = await getActiveScheduleId();
+      if (id == null) return;
+      await saveCoursesFor(id, courses);
+    });
   }
 
   /// 保存某指定课表的课程列表（用于导入课表等场景）
   Future<void> saveCoursesFor(String scheduleId, List<Course> courses) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = jsonEncode(courses.map((c) => c.toJson()).toList());
-    await prefs.setString(_coursesKey(scheduleId), raw);
+    await _serializeWrite(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(courses.map((c) => c.toJson()).toList());
+      await prefs.setString(_coursesKey(scheduleId), raw);
+    });
   }
 
   Future<void> addCourse(Course course) async {
-    final courses = await loadCourses();
-    courses.add(course);
-    await saveCourses(courses);
+    await _serializeWrite(() async {
+      final courses = await loadCourses();
+      final id = await getActiveScheduleId();
+      if (id == null) return;
+      courses.add(course);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          _coursesKey(id), jsonEncode(courses.map((c) => c.toJson()).toList()));
+    });
   }
 
   Future<void> updateCourse(Course updated) async {
-    final courses = await loadCourses();
-    final idx = courses.indexWhere((c) => c.id == updated.id);
-    if (idx != -1) courses[idx] = updated;
-    await saveCourses(courses);
+    await _serializeWrite(() async {
+      final courses = await loadCourses();
+      final id = await getActiveScheduleId();
+      if (id == null) return;
+      final idx = courses.indexWhere((c) => c.id == updated.id);
+      if (idx != -1) courses[idx] = updated;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          _coursesKey(id), jsonEncode(courses.map((c) => c.toJson()).toList()));
+    });
   }
 
   Future<void> deleteCourse(String id) async {
-    final courses = await loadCourses();
-    courses.removeWhere((c) => c.id == id);
-    await saveCourses(courses);
+    await _serializeWrite(() async {
+      final courses = await loadCourses();
+      final activeId = await getActiveScheduleId();
+      if (activeId == null) return;
+      courses.removeWhere((c) => c.id == id);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_coursesKey(activeId),
+          jsonEncode(courses.map((c) => c.toJson()).toList()));
+    });
   }
 
   // ─── 学期设置（作用于当前激活课表元数据） ──────────────────

@@ -4,6 +4,12 @@ import '../services/course_service.dart' show defaultSectionStartTimes;
 
 /// 课表（学期）模型：每个课表拥有独立的学期设置与课程列表。
 class Schedule {
+  static const minTotalWeeks = 1;
+  static const maxTotalWeeks = 30;
+  static const minDailySections = 4;
+  static const maxDailySections = 16;
+  static const minSectionDuration = 20;
+  static const maxSectionDuration = 120;
   final String id;
   final String name;
   final DateTime? semesterStart;
@@ -16,12 +22,32 @@ class Schedule {
     required this.id,
     required this.name,
     this.semesterStart,
-    this.totalWeeks = 20,
-    this.dailySections = 12,
+    int totalWeeks = 20,
+    int dailySections = 12,
     List<String>? sectionStartTimes,
-    this.sectionDuration = 45,
-  }) : sectionStartTimes =
-            sectionStartTimes ?? List.from(defaultSectionStartTimes);
+    int sectionDuration = 45,
+  })  : totalWeeks = totalWeeks.clamp(minTotalWeeks, maxTotalWeeks).toInt(),
+        dailySections = dailySections.clamp(minDailySections, maxDailySections).toInt(),
+        sectionStartTimes = normalizeSectionStartTimes(
+            sectionStartTimes, dailySections.clamp(minDailySections, maxDailySections).toInt()),
+        sectionDuration =
+            sectionDuration.clamp(minSectionDuration, maxSectionDuration).toInt();
+
+  static List<String> normalizeSectionStartTimes(
+      List<String>? raw, int dailySections) {
+    final defaults = List<String>.from(defaultSectionStartTimes);
+    final values = raw ?? <String>[];
+    return List<String>.generate(dailySections, (index) {
+      final value = index < values.length ? values[index] : null;
+      return _isValidTime(value) ? value! : (index < defaults.length ? defaults[index] : '08:00');
+    });
+  }
+
+  static bool _isValidTime(String? value) {
+    if (value == null) return false;
+    final match = RegExp(r'^([01]\d|2[0-3]):[0-5]\d$').firstMatch(value);
+    return match != null;
+  }
 
   Schedule copyWith({
     String? id,

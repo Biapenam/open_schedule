@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final duration = schedule?.sectionDuration ?? 45;
     final times =
         schedule?.sectionStartTimes ?? await _service.loadSectionStartTimes();
+    if (!mounted) return;
     setState(() {
       _scheduleName = schedule?.name ?? '我的课表';
       _semesterStart = start;
@@ -180,8 +181,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.1.0',
+                    version: 'v1.1.1',
                     isLatest: true,
+                    changes: [
+                      '修复了一些已知问题',
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  _ChangelogEntry(
+                    version: 'v1.1.0',
+                    isLatest: false,
                     changes: [
                       '新增多课表功能，支持新建、切换、重命名、删除多个课表',
                       '学期结束后课表自动切换为空状态，不再错误顺延开始日期',
@@ -282,6 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _service.saveSectionDuration(_sectionDuration);
     await _service.saveSectionStartTimes(_sectionStartTimes);
     await WidgetService().updateWidget();
+    if (!mounted) return;
     setState(() => _saving = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -492,7 +502,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildInfoTile('应用名称', 'Open Schedule'),
                         const Divider(height: 1),
-                        _buildInfoTile('版本', '1.1.0'),
+                        _buildInfoTile('版本', '1.1.1'),
                         const Divider(height: 1),
                         _buildInfoTile('开发者', 'Sora'),
                         const Divider(height: 1),
