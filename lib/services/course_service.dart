@@ -212,9 +212,14 @@ class CourseService {
   Future<void> saveCourses(List<Course> courses) async {
     final id = await getActiveScheduleId();
     if (id == null) return;
+    await saveCoursesFor(id, courses);
+  }
+
+  /// 保存某指定课表的课程列表（用于导入课表等场景）
+  Future<void> saveCoursesFor(String scheduleId, List<Course> courses) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = jsonEncode(courses.map((c) => c.toJson()).toList());
-    await prefs.setString(_coursesKey(id), raw);
+    await prefs.setString(_coursesKey(scheduleId), raw);
   }
 
   Future<void> addCourse(Course course) async {

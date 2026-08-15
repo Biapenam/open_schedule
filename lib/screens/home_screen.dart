@@ -1,8 +1,10 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/course.dart';
 import '../services/course_service.dart';
 import '../services/widget_service.dart';
+import '../utils/responsive.dart';
 import '../widgets/schedule_grid.dart';
 import '../widgets/schedule_manager_sheet.dart';
 import '../widgets/week_selector.dart';
@@ -165,42 +167,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FF),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            if (_semesterEnded || _semesterNotStarted || _semesterNotSet)
-              _buildSemesterBanner(),
-            WeekSelector(
-              currentWeek: _currentWeek,
-              selectedWeek: _selectedWeek,
-              totalWeeks: _totalWeeks,
-              onWeekChanged: _goToWeek,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _totalWeeks,
-                onPageChanged: (page) =>
-                    setState(() => _selectedWeek = page + 1),
-                itemBuilder: (context, index) {
-                  final week = index + 1;
-                  final weekCourses = _service.coursesForWeek(_courses, week);
-                  return ScheduleGrid(
-                    courses: weekCourses,
-                    isCurrentWeek: week == _currentWeek,
-                    onCourseDeleted: _refresh,
-                    onCourseEdited: _refresh,
-                    totalWeeks: _totalWeeks,
-                    dailySections: _dailySections,
-                    weekNumber: week,
-                    currentWeek: _currentWeek,
-                    semesterStart: _semesterStart,
-                  );
-                },
+        // 平板：内容整体限宽居中，避免横屏下横跨整屏；
+        // 手机：不限制宽度，保持现有单栏布局。
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final contentMaxWidth =
+                constraints.maxWidth >= Responsive.tabletBreakpoint
+                    ? math.min(constraints.maxWidth, 960.0)
+                    : constraints.maxWidth;
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    if (_semesterEnded ||
+                        _semesterNotStarted ||
+                        _semesterNotSet)
+                      _buildSemesterBanner(),
+                    WeekSelector(
+                      currentWeek: _currentWeek,
+                      selectedWeek: _selectedWeek,
+                      totalWeeks: _totalWeeks,
+                      onWeekChanged: _goToWeek,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: _totalWeeks,
+                        onPageChanged: (page) =>
+                            setState(() => _selectedWeek = page + 1),
+                        itemBuilder: (context, index) {
+                          final week = index + 1;
+                          final weekCourses =
+                              _service.coursesForWeek(_courses, week);
+                          return ScheduleGrid(
+                            courses: weekCourses,
+                            isCurrentWeek: week == _currentWeek,
+                            onCourseDeleted: _refresh,
+                            onCourseEdited: _refresh,
+                            totalWeeks: _totalWeeks,
+                            dailySections: _dailySections,
+                            weekNumber: week,
+                            currentWeek: _currentWeek,
+                            semesterStart: _semesterStart,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
       floatingActionButton: ScaleTransition(

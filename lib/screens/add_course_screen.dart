@@ -209,47 +209,95 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildSection('基本信息', [
-              _buildTextField(_nameCtrl, '课程名称 *', Icons.book_rounded,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? '请输入课程名称' : null),
-              const SizedBox(height: 12),
-              _buildTextField(_teacherCtrl, '任课教师（可选）', Icons.person_rounded),
-              const SizedBox(height: 12),
-              _buildTextField(
-                  _locationCtrl, '上课地点（可选）', Icons.location_on_rounded),
-            ]).animate().fadeIn(duration: 350.ms).slideY(begin: 0.2),
-            const SizedBox(height: 20),
-            _buildSection('上课时间', [
-              _buildDayPicker(),
-              const SizedBox(height: 14),
-              _buildSectionPicker(),
-            ])
-                .animate()
-                .fadeIn(delay: 100.ms, duration: 350.ms)
-                .slideY(begin: 0.2),
-            const SizedBox(height: 20),
-            _buildSection('上课周次', [
-              _buildWeekPicker(),
-            ])
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 350.ms)
-                .slideY(begin: 0.2),
-            const SizedBox(height: 20),
-            _buildSection('课程颜色', [
-              _buildColorPicker(),
-            ])
-                .animate()
-                .fadeIn(delay: 300.ms, duration: 350.ms)
-                .slideY(begin: 0.2),
-            const SizedBox(height: 32),
-          ],
+        // 平板（宽度 >= 840）：双栏布局，充分利用横向空间；
+        // 手机 / 窄屏：保持单栏。
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final twoColumn = constraints.maxWidth >= 840;
+            final padding = twoColumn ? 24.0 : 16.0;
+            // 周次格子在双栏下按栏宽动态决定列数
+            final weekColumns = twoColumn
+                ? (((constraints.maxWidth - padding * 2 - 20) / 2 / 72)
+                    .floor()
+                    .clamp(4, 8))
+                : 5;
+            return ListView(
+              padding: EdgeInsets.all(padding),
+              children: [
+                if (!twoColumn) ...[
+                  _sectionBasicInfo(),
+                  const SizedBox(height: 20),
+                  _sectionClassTime(),
+                  const SizedBox(height: 20),
+                  _sectionWeeks(weekColumns),
+                  const SizedBox(height: 20),
+                  _sectionColor(),
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _sectionBasicInfo(),
+                            const SizedBox(height: 20),
+                            _sectionClassTime(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _sectionWeeks(weekColumns),
+                            const SizedBox(height: 20),
+                            _sectionColor(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 32),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  // ── 双栏 / 单栏共享的 section ─────────────────────────────
+  Widget _sectionBasicInfo() {
+    return _buildSection('基本信息', [
+      _buildTextField(_nameCtrl, '课程名称 *', Icons.book_rounded,
+          validator: (v) => (v == null || v.trim().isEmpty) ? '请输入课程名称' : null),
+      const SizedBox(height: 12),
+      _buildTextField(_teacherCtrl, '任课教师（可选）', Icons.person_rounded),
+      const SizedBox(height: 12),
+      _buildTextField(_locationCtrl, '上课地点（可选）', Icons.location_on_rounded),
+    ]).animate().fadeIn(duration: 350.ms).slideY(begin: 0.2);
+  }
+
+  Widget _sectionClassTime() {
+    return _buildSection('上课时间', [
+      _buildDayPicker(),
+      const SizedBox(height: 14),
+      _buildSectionPicker(),
+    ]).animate().fadeIn(delay: 100.ms, duration: 350.ms).slideY(begin: 0.2);
+  }
+
+  Widget _sectionWeeks(int crossAxisCount) {
+    return _buildSection('上课周次', [
+      _buildWeekPicker(crossAxisCount: crossAxisCount),
+    ]).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(begin: 0.2);
+  }
+
+  Widget _sectionColor() {
+    return _buildSection('课程颜色', [
+      _buildColorPicker(),
+    ]).animate().fadeIn(delay: 300.ms, duration: 350.ms).slideY(begin: 0.2);
   }
 
   Widget _buildSection(String title, List<Widget> children) {
@@ -398,7 +446,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Widget _buildWeekPicker() {
+  Widget _buildWeekPicker({int crossAxisCount = 5}) {
     final allSelected = _selectedWeeks.length == widget.totalWeeks;
     // 单周：1,3,5...  双周：2,4,6...
     final oddWeeks = List.generate(widget.totalWeeks, (i) => i + 1)
@@ -464,12 +512,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        // 周格子
+        // 周格子（列数按可用宽度动态调整）
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
             childAspectRatio: 1.6,

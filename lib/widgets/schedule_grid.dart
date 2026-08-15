@@ -102,33 +102,52 @@ class _ScheduleGridState extends State<ScheduleGrid> {
     final weekMonday = _getWeekMonday();
     final visibleDays = _getVisibleDays();
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            _buildHeader(todayWeekday, weekMonday, visibleDays),
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildBody(todayWeekday, visibleDays),
+    return LayoutBuilder(builder: (context, constraints) {
+      // 根据可用宽度与天数列数动态决定网格整体宽度：
+      // 单列过宽时（平板横屏 / 4:3 横屏）限制每列宽度并居中，
+      // 避免课程块被横向过度拉伸；手机端不受影响。
+      const labelAndGap = _sectionLabelWidth;
+      final availableForDays = constraints.maxWidth - labelAndGap;
+      final dayWidth = availableForDays / visibleDays;
+      // 目标单列最大宽度（px）。课程块内部已按列宽自适应字号。
+      const targetMaxDayWidth = 180.0;
+      final gridWidth = dayWidth > targetMaxDayWidth
+          ? labelAndGap + visibleDays * targetMaxDayWidth
+          : constraints.maxWidth;
+
+      return Center(
+        child: SizedBox(
+          width: gridWidth,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6C63FF).withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Column(
+                children: [
+                  _buildHeader(todayWeekday, weekMonday, visibleDays),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: _buildBody(todayWeekday, visibleDays),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   // ── 标题行 ─────────────────────────────────────────────────
@@ -299,6 +318,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                   context: context,
                   backgroundColor: Colors.transparent,
                   isScrollControlled: true,
+                  constraints: const BoxConstraints(maxWidth: 640),
                   builder: (_) => CourseDetailSheet(
                     course: course,
                     onDeleted: widget.onCourseDeleted,
@@ -385,10 +405,19 @@ class _CourseBlock extends StatelessWidget {
     final hasTeacher = course.teacher.isNotEmpty;
 
     // ── 动态字体：列越窄字越小，但不低于8sp ──────────────────
-    // 标准列宽约55px（5列）；7列时约45px
-    // 基准字体：名称11，地点10；列宽<44时各降1
-    final nameFontBase = colWidth < 44 ? 10.0 : 11.0;
-    final infoFontBase = colWidth < 44 ? 9.0 : 10.0;
+    // 标准列宽约55px（5列）；7列时约45px；平板横屏列宽可达180px
+    // 基准字体：名称11，地点10；列宽<44时各降1；
+    // 平板宽列（>=150px）时温和提升到 名称12 / 地点11，避免大屏上偏小
+    final nameFontBase = colWidth < 44
+        ? 10.0
+        : colWidth >= 150
+            ? 12.0
+            : 11.0;
+    final infoFontBase = colWidth < 44
+        ? 9.0
+        : colWidth >= 150
+            ? 11.0
+            : 10.0;
     final nameLineH = nameFontBase * 1.3;
     final infoLineH = infoFontBase * 1.3;
     const gap = 3.0;

@@ -24,6 +24,8 @@ class ScheduleManagerSheet extends StatefulWidget {
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,
+      // 平板下限制宽度并居中，避免横屏时面板横跨整屏
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

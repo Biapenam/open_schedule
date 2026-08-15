@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../services/course_service.dart';
+import '../services/import_export_service.dart';
 import '../services/widget_service.dart';
+import '../widgets/import_export_sheet.dart';
 import '../widgets/schedule_manager_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -62,6 +64,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// 导出当前课表为口令
+  Future<void> _openExport() async {
+    final schedule = await _service.getActiveSchedule();
+    if (!mounted) return;
+    if (schedule == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('当前没有可导出的课表')),
+      );
+      return;
+    }
+    final courses = await _service.loadCoursesFor(schedule.id);
+    if (!mounted) return;
+    final code = ImportExportService.encode(schedule, courses);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 640),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ExportSheet(
+        code: code,
+        scheduleName: schedule.name,
+        courseCount: courses.length,
+      ),
+    );
+  }
+
+  /// 从口令导入课表；成功后刷新并同步桌面小卡片
+  Future<void> _openImport() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 640),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ImportSheet(service: _service),
+    );
+    if (result == true) {
+      _load();
+      WidgetService().updateWidget();
+    }
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -87,6 +136,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,
+      // 平板下限制宽度并居中
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -294,162 +345,200 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // ── 课表管理 ──
-                _buildCard(
-                  title: '课表管理',
-                  icon: Icons.collections_bookmark_rounded,
+          // 平板下限制内容最大宽度并居中，避免横屏时卡片横跨整屏
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
                   children: [
-                    ListTile(
-                      leading: _iconBox(Icons.swap_horiz_rounded),
-                      title: const Text('切换 / 管理课表',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E))),
-                      subtitle: Text('当前：$_scheduleName',
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF8888AA))),
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          color: Color(0xFFCCCCDD)),
-                      onTap: _openScheduleManager,
-                    ),
-                  ],
-                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
-
-                const SizedBox(height: 16),
-
-                // ── 学期信息 ──
-                _buildCard(
-                  title: '学期信息',
-                  icon: Icons.school_rounded,
-                  children: [
-                    _buildDateTile(),
-                    const Divider(height: 1),
-                    _buildWeeksTile(),
-                  ],
-                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
-
-                const SizedBox(height: 16),
-
-                // ── 课程时间 ──
-                _buildCard(
-                  title: '课程时间设置',
-                  icon: Icons.schedule_rounded,
-                  children: [
-                    _buildDailySectionsTile(),
-                    const Divider(height: 1),
-                    _buildDurationTile(),
-                    const Divider(height: 1),
-                    _buildSectionTimesList(),
-                  ],
-                )
-                    .animate()
-                    .fadeIn(delay: 100.ms, duration: 400.ms)
-                    .slideY(begin: 0.2),
-
-                const SizedBox(height: 16),
-
-                _buildCard(
-                  title: '桌面小卡片',
-                  icon: Icons.widgets_rounded,
-                  children: [
-                    ListTile(
-                      leading: _iconBox(Icons.add_to_home_screen_rounded),
-                      title: const Text('添加桌面小卡片',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E))),
-                      subtitle: const Text('在桌面显示今天的课程',
-                          style: TextStyle(
-                              fontSize: 12, color: Color(0xFF8888AA))),
-                      trailing: _addingWidget
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.chevron_right_rounded,
+                    // ── 课表管理 ──
+                    _buildCard(
+                      title: '课表管理',
+                      icon: Icons.collections_bookmark_rounded,
+                      children: [
+                        ListTile(
+                          leading: _iconBox(Icons.swap_horiz_rounded),
+                          title: const Text('切换 / 管理课表',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          subtitle: Text('当前：$_scheduleName',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF8888AA))),
+                          trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
-                      onTap: _addingWidget ? null : _requestPinWidget,
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: _iconBox(Icons.help_outline_rounded),
-                      title: const Text('如何手动添加',
+                          onTap: _openScheduleManager,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: _iconBox(Icons.upload_rounded),
+                          title: const Text('导出课表',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          subtitle: const Text('生成口令，可在另一台设备快速恢复',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8888AA))),
+                          trailing: const Icon(Icons.chevron_right_rounded,
+                              color: Color(0xFFCCCCDD)),
+                          onTap: _openExport,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: _iconBox(Icons.download_rounded),
+                          title: const Text('从口令导入',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          subtitle: const Text('粘贴口令，恢复课表到本机',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8888AA))),
+                          trailing: const Icon(Icons.chevron_right_rounded,
+                              color: Color(0xFFCCCCDD)),
+                          onTap: _openImport,
+                        ),
+                      ],
+                    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+
+                    const SizedBox(height: 16),
+
+                    // ── 学期信息 ──
+                    _buildCard(
+                      title: '学期信息',
+                      icon: Icons.school_rounded,
+                      children: [
+                        _buildDateTile(),
+                        const Divider(height: 1),
+                        _buildWeeksTile(),
+                      ],
+                    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+
+                    const SizedBox(height: 16),
+
+                    // ── 课程时间 ──
+                    _buildCard(
+                      title: '课程时间设置',
+                      icon: Icons.schedule_rounded,
+                      children: [
+                        _buildDailySectionsTile(),
+                        const Divider(height: 1),
+                        _buildDurationTile(),
+                        const Divider(height: 1),
+                        _buildSectionTimesList(),
+                      ],
+                    )
+                        .animate()
+                        .fadeIn(delay: 100.ms, duration: 400.ms)
+                        .slideY(begin: 0.2),
+
+                    const SizedBox(height: 16),
+
+                    _buildCard(
+                      title: '桌面小卡片',
+                      icon: Icons.widgets_rounded,
+                      children: [
+                        ListTile(
+                          leading: _iconBox(Icons.add_to_home_screen_rounded),
+                          title: const Text('添加桌面小卡片',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          subtitle: const Text('在桌面显示今天的课程',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8888AA))),
+                          trailing: _addingWidget
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.chevron_right_rounded,
+                                  color: Color(0xFFCCCCDD)),
+                          onTap: _addingWidget ? null : _requestPinWidget,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: _iconBox(Icons.help_outline_rounded),
+                          title: const Text('如何手动添加',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          subtitle: const Text('适用于系统没有弹出添加确认时',
+                              style: TextStyle(
+                                  fontSize: 12, color: Color(0xFF8888AA))),
+                          trailing: const Icon(Icons.chevron_right_rounded,
+                              color: Color(0xFFCCCCDD)),
+                          onTap: _showManualWidgetGuide,
+                        ),
+                      ],
+                    )
+                        .animate()
+                        .fadeIn(delay: 200.ms, duration: 400.ms)
+                        .slideY(begin: 0.2),
+
+                    const SizedBox(height: 16),
+
+                    // ── 关于 ──
+                    _buildCard(
+                      title: '关于',
+                      icon: Icons.info_rounded,
+                      children: [
+                        _buildInfoTile('应用名称', 'Open Schedule'),
+                        const Divider(height: 1),
+                        _buildInfoTile('版本', '1.1.0'),
+                        const Divider(height: 1),
+                        _buildInfoTile('开发者', 'Sora'),
+                        const Divider(height: 1),
+                        ListTile(
+                          title: const Text('更新日志',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A2E))),
+                          trailing: const Icon(Icons.chevron_right_rounded,
+                              color: Color(0xFFCCCCDD)),
+                          onTap: () => _showChangelog(context),
+                        ),
+                      ],
+                    )
+                        .animate()
+                        .fadeIn(delay: 300.ms, duration: 400.ms)
+                        .slideY(begin: 0.2),
+
+                    const SizedBox(height: 32),
+
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.save_rounded),
+                      label: const Text('保存设置',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E))),
-                      subtitle: const Text('适用于系统没有弹出添加确认时',
-                          style: TextStyle(
-                              fontSize: 12, color: Color(0xFF8888AA))),
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          color: Color(0xFFCCCCDD)),
-                      onTap: _showManualWidgetGuide,
-                    ),
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C63FF),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
+
+                    SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 16),
                   ],
-                )
-                    .animate()
-                    .fadeIn(delay: 200.ms, duration: 400.ms)
-                    .slideY(begin: 0.2),
-
-                const SizedBox(height: 16),
-
-                // ── 关于 ──
-                _buildCard(
-                  title: '关于',
-                  icon: Icons.info_rounded,
-                  children: [
-                    _buildInfoTile('应用名称', 'Open Schedule'),
-                    const Divider(height: 1),
-                    _buildInfoTile('版本', '1.1.0'),
-                    const Divider(height: 1),
-                    _buildInfoTile('开发者', 'Sora'),
-                    const Divider(height: 1),
-                    ListTile(
-                      title: const Text('更新日志',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E))),
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          color: Color(0xFFCCCCDD)),
-                      onTap: () => _showChangelog(context),
-                    ),
-                  ],
-                )
-                    .animate()
-                    .fadeIn(delay: 300.ms, duration: 400.ms)
-                    .slideY(begin: 0.2),
-
-                const SizedBox(height: 32),
-
-                FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.save_rounded),
-                  label: const Text('保存设置',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
-
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-              ],
+                ),
+              ),
             ),
     );
   }
@@ -528,6 +617,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      // 平板下限制宽度并居中
+      constraints: const BoxConstraints(maxWidth: 640),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
