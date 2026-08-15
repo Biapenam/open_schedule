@@ -15,7 +15,8 @@ void main() {
         totalWeeks: 20,
         dailySections: 12,
         sectionDuration: 45,
-        sectionStartTimes: const ['08:00', '08:55', '09:50'],
+        // 远程 Schedule 模型会把节次时间补全到 dailySections 个
+        sectionStartTimes: List<String>.from(defaultSectionStartTimes),
       );
 
   List<Course> buildCourses() => [
@@ -54,7 +55,7 @@ void main() {
     expect(data.schedule.dailySections, 12);
     expect(data.schedule.sectionDuration, 45);
     expect(data.schedule.semesterStart, DateTime(2026, 2, 23));
-    expect(data.schedule.sectionStartTimes, ['08:00', '08:55', '09:50']);
+    expect(data.schedule.sectionStartTimes, defaultSectionStartTimes);
 
     expect(data.courses.length, 2);
     final first = data.courses.first;

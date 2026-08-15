@@ -160,8 +160,9 @@ class ImportExportService {
     final sb = StringBuffer();
     var value = hash;
     for (int i = 0; i < 4; i++) {
-      sb.write(_checkChars[value & 0x1F]);
-      value >>= 5;
+      // 用取模而非 & 0x1F：字符集是 30 个字符，按位掩码会产生 30/31 越界索引
+      sb.write(_checkChars[value % _checkChars.length]);
+      value ~/= _checkChars.length;
     }
     return sb.toString();
   }
