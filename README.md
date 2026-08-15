@@ -99,6 +99,7 @@ android/app/src/main/res/xml/schedule_widget_info.xml
 
 - 新增了对Pad大屏设备的适配
 - 新增了使用口令在不同设备间传输课表信息的功能
+- 优化了性能开销
 
 ### v1.1.1
 

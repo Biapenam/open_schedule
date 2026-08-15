@@ -21,11 +21,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final CourseService _service = CourseService();
 
-  List<Course> _courses = [];
+  Map<int, List<Course>> _coursesByWeek = {};
   int _currentWeek = 1; // 传给子组件：学期在范围内为真实值，否则为 -1
   int _selectedWeek = 1;
   int _totalWeeks = 20;
   int _dailySections = 12;
+  List<String> _sectionStartTimes = [];
+  int _sectionDuration = 45;
   bool _loading = true;
 
   DateTime? _semesterStart;
@@ -37,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _scheduleId;
 
   PageController? _pageController;
+  final ValueNotifier<int> _selectedWeekNotifier = ValueNotifier(1);
   late AnimationController _fabController;
 
   @override
@@ -50,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _fabController.dispose();
     _pageController?.dispose();
+    _selectedWeekNotifier.dispose();
     super.dispose();
   }
 
@@ -60,6 +64,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final start = schedule?.semesterStart;
     final totalWeeks = schedule?.totalWeeks ?? 20;
     final dailySections = schedule?.dailySections ?? 12;
+    final sectionStartTimes =
+        schedule?.sectionStartTimes ?? List<String>.from(defaultSectionStartTimes);
+    final sectionDuration = schedule?.sectionDuration ?? 45;
 
     int rawWeek = 1;
     bool ended = false;
@@ -91,11 +98,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pageController?.dispose();
     _pageController = PageController(initialPage: initialPage);
     setState(() {
-      _courses = courses;
+      _coursesByWeek = _groupCoursesByWeek(courses, totalWeeks);
       _currentWeek = displayCurrentWeek;
       _selectedWeek = (initialPage + 1).clamp(1, totalWeeks);
+      _selectedWeekNotifier.value = _selectedWeek;
       _totalWeeks = totalWeeks;
       _dailySections = dailySections;
+      _sectionStartTimes = sectionStartTimes;
+      _sectionDuration = sectionDuration;
       _semesterStart = start;
       _semesterEnded = ended;
       _semesterNotStarted = notStarted;
@@ -111,8 +121,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _refresh() async {
     final courses = await _service.loadCourses();
     if (!mounted) return;
-    setState(() => _courses = courses);
+    setState(() {
+      _coursesByWeek = _groupCoursesByWeek(courses, _totalWeeks);
+    });
     WidgetService().updateWidget();
+  }
+
+  Map<int, List<Course>> _groupCoursesByWeek(
+      List<Course> courses, int totalWeeks) {
+    final grouped = <int, List<Course>>{
+      for (var week = 1; week <= totalWeeks; week++) week: <Course>[],
+    };
+    for (final course in courses) {
+      for (final week in course.weeks) {
+        grouped[week]?.add(course);
+      }
+    }
+    return grouped;
   }
 
   void _goToWeek(int week) {
@@ -189,23 +214,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         _semesterNotStarted ||
                         _semesterNotSet)
                       _buildSemesterBanner(),
-                    WeekSelector(
-                      currentWeek: _currentWeek,
-                      selectedWeek: _selectedWeek,
-                      totalWeeks: _totalWeeks,
-                      onWeekChanged: _goToWeek,
+                    ValueListenableBuilder<int>(
+                      valueListenable: _selectedWeekNotifier,
+                      builder: (context, selectedWeek, child) => WeekSelector(
+                        currentWeek: _currentWeek,
+                        selectedWeek: selectedWeek,
+                        totalWeeks: _totalWeeks,
+                        onWeekChanged: _goToWeek,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Expanded(
                       child: PageView.builder(
                         controller: _pageController!,
                         itemCount: _totalWeeks,
-                        onPageChanged: (page) =>
-                            setState(() => _selectedWeek = page + 1),
+                        onPageChanged: (page) {
+                          _selectedWeek = page + 1;
+                          _selectedWeekNotifier.value = _selectedWeek;
+                        },
                         itemBuilder: (context, index) {
                           final week = index + 1;
                           final weekCourses =
-                              _service.coursesForWeek(_courses, week);
+                              _coursesByWeek[week] ?? const <Course>[];
                           return ScheduleGrid(
                             courses: weekCourses,
                             isCurrentWeek: week == _currentWeek,
@@ -216,6 +246,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             weekNumber: week,
                             currentWeek: _currentWeek,
                             semesterStart: _semesterStart,
+                            sectionStartTimes: _sectionStartTimes,
+                            sectionDuration: _sectionDuration,
                           );
                         },
                       ),
@@ -257,10 +289,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(_scheduleName,
-                            style: Theme.of(context).textTheme.displayLarge)
-                        .animate()
-                        .fadeIn(duration: 400.ms)
-                        .slideX(begin: -0.2),
+                        style: Theme.of(context).textTheme.displayLarge),
                     const SizedBox(width: 6),
                     const Icon(Icons.keyboard_arrow_down_rounded,
                         color: Color(0xFF6C63FF), size: 28),
@@ -268,13 +297,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 2),
                 Text(todayStr,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withOpacity(0.7)))
-                    .animate()
-                    .fadeIn(delay: 100.ms, duration: 400.ms),
+                                .withOpacity(0.7))),
               ],
             ),
           ),
@@ -288,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-          ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+          ),
         ],
       ),
     );
@@ -346,6 +373,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
+    );
   }
 }

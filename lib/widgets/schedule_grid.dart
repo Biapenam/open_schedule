@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/course.dart';
-import '../services/course_service.dart';
+import '../services/course_service.dart' show defaultSectionStartTimes;
 import 'course_detail_sheet.dart';
 import 'dart:math' as math;
 
@@ -18,6 +17,8 @@ class ScheduleGrid extends StatefulWidget {
   final int weekNumber;
   final int currentWeek;
   final DateTime? semesterStart;
+  final List<String> sectionStartTimes;
+  final int sectionDuration;
 
   const ScheduleGrid({
     super.key,
@@ -28,6 +29,8 @@ class ScheduleGrid extends StatefulWidget {
     required this.totalWeeks,
     required this.weekNumber,
     required this.currentWeek,
+    required this.sectionStartTimes,
+    required this.sectionDuration,
     this.dailySections = 12,
     this.semesterStart,
   });
@@ -37,43 +40,26 @@ class ScheduleGrid extends StatefulWidget {
 }
 
 class _ScheduleGridState extends State<ScheduleGrid> {
-  final CourseService _service = CourseService();
-  List<String> _startTimes = [];
-  int _duration = 45;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTimes();
-  }
-
-  @override
-  void didUpdateWidget(ScheduleGrid oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _loadTimes();
-  }
-
-  Future<void> _loadTimes() async {
-    final times = await _service.loadSectionStartTimes();
-    final dur = await _service.loadSectionDuration();
-    if (mounted) {
-      setState(() {
-        _startTimes = times;
-        _duration = dur;
-      });
-    }
-  }
-
   String _getStartTime(int section) {
     final idx = section - 1;
-    if (idx < _startTimes.length) return _startTimes[idx];
+    if (idx < widget.sectionStartTimes.length) {
+      return widget.sectionStartTimes[idx];
+    }
     if (idx < defaultSectionStartTimes.length)
       return defaultSectionStartTimes[idx];
     return '08:00';
   }
 
   String _getEndTime(int section) =>
-      _service.calcEndTime(_getStartTime(section), _duration);
+      _calcEndTime(_getStartTime(section), widget.sectionDuration);
+
+  String _calcEndTime(String startTime, int durationMinutes) {
+    final parts = startTime.split(':');
+    final h = int.tryParse(parts.first) ?? 8;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+    final total = h * 60 + m + durationMinutes;
+    return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
+  }
 
   /// 推算该周周一日期
   /// 优先用学期开始日期计算（准确且不受学期结束影响），
@@ -101,6 +87,12 @@ class _ScheduleGridState extends State<ScheduleGrid> {
     final todayWeekday = DateTime.now().weekday;
     final weekMonday = _getWeekMonday();
     final visibleDays = _getVisibleDays();
+    final coursesByDay = <int, List<Course>>{
+      for (var day = 1; day <= visibleDays; day++) day: <Course>[],
+    };
+    for (final course in widget.courses) {
+      coursesByDay[course.dayOfWeek]?.add(course);
+    }
 
     return LayoutBuilder(builder: (context, constraints) {
       // 根据可用宽度与天数列数动态决定网格整体宽度：
@@ -138,7 +130,8 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                   _buildHeader(todayWeekday, weekMonday, visibleDays),
                   Expanded(
                     child: SingleChildScrollView(
-                      child: _buildBody(todayWeekday, visibleDays),
+                      child:
+                          _buildBody(todayWeekday, visibleDays, coursesByDay),
                     ),
                   ),
                 ],
@@ -219,7 +212,8 @@ class _ScheduleGridState extends State<ScheduleGrid> {
   }
 
   // ── 主体 ───────────────────────────────────────────────────
-  Widget _buildBody(int todayWeekday, int visibleDays) {
+  Widget _buildBody(int todayWeekday, int visibleDays,
+      Map<int, List<Course>> coursesByDay) {
     final totalHeight = _cellHeight * widget.dailySections;
 
     return SizedBox(
@@ -263,18 +257,19 @@ class _ScheduleGridState extends State<ScheduleGrid> {
           ),
           // 每天的列，用 Expanded 平分剩余宽度
           for (int day = 1; day <= visibleDays; day++)
-            Expanded(child: _buildDayColumn(day, todayWeekday, totalHeight)),
+            Expanded(
+                child: _buildDayColumn(
+                    day, todayWeekday, totalHeight, coursesByDay[day]!)),
         ],
       ),
     );
   }
 
   // ── 单天列 ────────────────────────────────────────────────
-  Widget _buildDayColumn(int day, int todayWeekday, double totalHeight) {
+  Widget _buildDayColumn(int day, int todayWeekday, double totalHeight,
+      List<Course> dayCourses) {
     final isToday = widget.isCurrentWeek && day == todayWeekday;
     final isWeekend = day >= 6;
-    final dayCourses = widget.courses.where((c) => c.dayOfWeek == day).toList();
-
     return SizedBox(
       height: totalHeight,
       child: Stack(
@@ -309,21 +304,25 @@ class _ScheduleGridState extends State<ScheduleGrid> {
               height:
                   (course.endSection - course.startSection + 1) * _cellHeight -
                       4,
-              child: _CourseBlock(
-                course: course,
-                blockHeight: (course.endSection - course.startSection + 1) *
-                        _cellHeight -
-                    4,
-                onTap: () => showModalBottomSheet(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  constraints: const BoxConstraints(maxWidth: 640),
-                  builder: (_) => CourseDetailSheet(
-                    course: course,
-                    onDeleted: widget.onCourseDeleted,
-                    onEdited: widget.onCourseEdited,
-                    totalWeeks: widget.totalWeeks,
+              child: RepaintBoundary(
+                child: _CourseBlock(
+                  course: course,
+                  blockHeight: (course.endSection - course.startSection + 1) *
+                          _cellHeight -
+                      4,
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    isScrollControlled: true,
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    builder: (_) => CourseDetailSheet(
+                      course: course,
+                      onDeleted: widget.onCourseDeleted,
+                      onEdited: widget.onCourseEdited,
+                      totalWeeks: widget.totalWeeks,
+                      sectionStartTimes: widget.sectionStartTimes,
+                      sectionDuration: widget.sectionDuration,
+                    ),
                   ),
                 ),
               ),
@@ -360,39 +359,12 @@ class _CourseBlock extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(9),
-          boxShadow: [
-            BoxShadow(
-                color: color.withOpacity(0.28),
-                blurRadius: 5,
-                offset: const Offset(0, 2)),
-          ],
         ),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // 装饰圆
-            Positioned(
-              top: -10,
-              right: -10,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // 内容：用 LayoutBuilder 获取实际列宽，动态调整字体
-            LayoutBuilder(builder: (context, constraints) {
-              return _buildContent(constraints.maxWidth, constraints.maxHeight);
-            }),
-          ],
-        ),
-      )
-          .animate(delay: Duration(milliseconds: course.dayOfWeek * 60))
-          .fadeIn(duration: 400.ms)
-          .scaleXY(begin: 0.88, curve: Curves.easeOutBack),
+        // 内容：用 LayoutBuilder 获取实际列宽，动态调整字体
+        child: LayoutBuilder(builder: (context, constraints) {
+          return _buildContent(constraints.maxWidth, constraints.maxHeight);
+        }),
+      ),
     );
   }
 
