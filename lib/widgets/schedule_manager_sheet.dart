@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/schedule.dart';
 import '../services/course_service.dart';
+import '../utils/app_modal_sheet.dart';
+import '../utils/app_colors.dart';
 
 /// 课表管理底部面板：新建、切换、重命名、删除课表。
 /// 切换或新建后会通过 onChanged 回调通知调用方刷新。
@@ -20,15 +22,8 @@ class ScheduleManagerSheet extends StatefulWidget {
     required CourseService service,
     required VoidCallback onChanged,
   }) {
-    return showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      // 平板下限制宽度并居中，避免横屏时面板横跨整屏
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    return showAppModalSheet(
+      context,
       builder: (_) => ScheduleManagerSheet(
         service: service,
         onChanged: onChanged,
@@ -76,11 +71,20 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
     final name = await _showNameDialog(title: '新建课表', hint: '如：2026春季学期');
     if (name == null) return;
     setState(() => _busy = true);
-    final schedule = await widget.service.createSchedule(name);
-    await widget.service.setActiveSchedule(schedule.id);
-    setState(() => _busy = false);
-    if (!mounted) return;
-    widget.onChanged();
+    try {
+      final schedule = await widget.service.createSchedule(name);
+      await widget.service.setActiveSchedule(schedule.id);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      widget.onChanged();
+    } catch (e) {
+      debugPrint('createSchedule failed: $e');
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('新建课表失败，请重试')),
+      );
+    }
   }
 
   Future<void> _renameSchedule(Schedule schedule) async {
@@ -90,13 +94,22 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
       initial: schedule.name,
     );
     if (name == null || name.trim().isEmpty) return;
-    await widget.service.renameSchedule(schedule.id, name.trim());
-    setState(() {
-      final idx = _schedules.indexWhere((s) => s.id == schedule.id);
-      if (idx != -1) {
-        _schedules[idx] = _schedules[idx].copyWith(name: name.trim());
-      }
-    });
+    try {
+      await widget.service.renameSchedule(schedule.id, name.trim());
+      if (!mounted) return;
+      setState(() {
+        final idx = _schedules.indexWhere((s) => s.id == schedule.id);
+        if (idx != -1) {
+          _schedules[idx] = _schedules[idx].copyWith(name: name.trim());
+        }
+      });
+    } catch (e) {
+      debugPrint('renameSchedule failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('重命名失败，请重试')),
+      );
+    }
   }
 
   Future<void> _deleteSchedule(Schedule schedule) async {
@@ -120,9 +133,7 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6584),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              backgroundColor: AppColors.secondary,
             ),
             child: const Text('删除'),
           ),
@@ -132,12 +143,21 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
     if (confirmed != true) return;
 
     final wasActive = schedule.id == _activeId;
-    await widget.service.deleteSchedule(schedule.id);
-    setState(() {
-      _schedules.removeWhere((s) => s.id == schedule.id);
-    });
-    if (wasActive) {
-      widget.onChanged();
+    try {
+      await widget.service.deleteSchedule(schedule.id);
+      if (!mounted) return;
+      setState(() {
+        _schedules.removeWhere((s) => s.id == schedule.id);
+      });
+      if (wasActive) {
+        widget.onChanged();
+      }
+    } catch (e) {
+      debugPrint('deleteSchedule failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('删除课表失败，请重试')),
+      );
     }
   }
 
@@ -161,7 +181,7 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none),
             filled: true,
-            fillColor: const Color(0xFFF0EFFF),
+            fillColor: AppColors.inputFill,
           ),
         ),
         actions: [
@@ -171,16 +191,11 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
             child: const Text('确定'),
           ),
         ],
       ),
-    );
+    ).whenComplete(ctrl.dispose);
   }
 
   @override
@@ -204,13 +219,13 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
             child: Row(
               children: [
                 const Icon(Icons.collections_bookmark_rounded,
-                    color: Color(0xFF6C63FF), size: 20),
+                    color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
                 const Text('课表管理',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A2E))),
+                        color: AppColors.textPrimary)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _busy ? null : _createSchedule,
@@ -218,7 +233,7 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
                   label: const Text('新建',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: AppColors.primary,
                   ),
                 ),
               ],
@@ -268,13 +283,13 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: (isActive ? const Color(0xFF6C63FF) : const Color(0xFFAAAAAA))
+          color: (isActive ? AppColors.primary : const Color(0xFFAAAAAA))
               .withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           isActive ? Icons.check_circle_rounded : Icons.calendar_month_rounded,
-          color: isActive ? const Color(0xFF6C63FF) : const Color(0xFF8888AA),
+          color: isActive ? AppColors.primary : AppColors.textSecondary,
           size: 20,
         ),
       ),
@@ -282,22 +297,22 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
           style: TextStyle(
             fontSize: 15,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color: const Color(0xFF1A1A2E),
+            color: AppColors.textPrimary,
           )),
       subtitle: Text(subtitle,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             icon: const Icon(Icons.edit_rounded, size: 20),
-            color: const Color(0xFF8888AA),
+            color: AppColors.textSecondary,
             onPressed: () => _renameSchedule(schedule),
             tooltip: '重命名',
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, size: 20),
-            color: const Color(0xFFFF6584),
+            color: AppColors.secondary,
             onPressed: () => _deleteSchedule(schedule),
             tooltip: '删除',
           ),

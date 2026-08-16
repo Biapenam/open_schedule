@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/course.dart';
+import '../models/schedule.dart';
 import '../services/course_service.dart';
 import '../screens/add_course_screen.dart';
+import '../utils/app_colors.dart';
 
 class CourseDetailSheet extends StatefulWidget {
   final Course course;
@@ -29,19 +31,11 @@ class CourseDetailSheet extends StatefulWidget {
 class _CourseDetailSheetState extends State<CourseDetailSheet> {
   final CourseService _service = CourseService();
 
-  String _getStartTime(int section) {
-    final idx = section - 1;
-    if (idx < widget.sectionStartTimes.length) {
-      return widget.sectionStartTimes[idx];
-    }
-    if (idx < defaultSectionStartTimes.length) {
-      return defaultSectionStartTimes[idx];
-    }
-    return '08:00';
-  }
+  String _getStartTime(int section) =>
+      Schedule.sectionStartTimeAt(widget.sectionStartTimes, section);
 
-  String _getEndTime(int section) =>
-      _service.calcEndTime(_getStartTime(section), widget.sectionDuration);
+  String _getEndTime(int section) => Schedule.calcEndTime(
+      _getStartTime(section), widget.sectionDuration);
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +175,7 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
                     child: _ActionButton(
                         label: '删除',
                         icon: Icons.delete_rounded,
-                        color: const Color(0xFFFF6584),
+                        color: AppColors.secondary,
                         onTap: () => _deleteCourse(context))),
               ],
             ).animate().fadeIn(delay: 250.ms, duration: 350.ms),
@@ -239,12 +233,11 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
     final result = await Navigator.push<bool>(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, anim, __) => AddCourseScreen(
+        pageBuilder: (_, anim, _) => AddCourseScreen(
           totalWeeks: widget.totalWeeks,
-          initialWeek: widget.course.dayOfWeek,
           editingCourse: widget.course,
         ),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
+        transitionsBuilder: (_, anim, _, child) => SlideTransition(
           position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
               .animate(
                   CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
@@ -296,7 +289,7 @@ class _InfoRow extends StatelessWidget {
               Text(value,
                   style: const TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1A1A2E),
+                      color: AppColors.textPrimary,
                       fontWeight: FontWeight.w600)),
             ],
           ),

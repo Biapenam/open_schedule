@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import '../models/schedule.dart';
 import '../services/course_service.dart';
 import '../services/import_export_service.dart';
 import '../services/widget_service.dart';
+import '../utils/app_modal_sheet.dart';
 import '../widgets/import_export_sheet.dart';
 import '../widgets/schedule_manager_sheet.dart';
+import '../utils/app_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -78,14 +81,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final courses = await _service.loadCoursesFor(schedule.id);
     if (!mounted) return;
     final code = ImportExportService.encode(schedule, courses);
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    showAppModalSheet(
+      context,
       builder: (_) => ExportSheet(
         code: code,
         scheduleName: schedule.name,
@@ -96,14 +93,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 从口令导入课表；成功后刷新并同步桌面小卡片
   Future<void> _openImport() async {
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    final result = await showAppModalSheet<bool>(
+      context,
       // 键盘弹出时把面板抬到输入法上方，避免挡住口令输入框
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
@@ -121,13 +112,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _semesterStart ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      // 允许选择过去若干年（历史学期），上限为一年后，避免硬编码年份过期
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       helpText: '选择学期开始日期（第1周周一）',
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: Color(0xFF6C63FF),
+            primary: AppColors.primary,
             onPrimary: Colors.white,
           ),
         ),
@@ -137,16 +129,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (picked != null) setState(() => _semesterStart = picked);
   }
 
-  void _showChangelog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      // 平板下限制宽度并居中
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+  void _showChangelog() {
+    showAppModalSheet(
+      context,
       builder: (_) => DraggableScrollableSheet(
         initialChildSize: 0.6,
         minChildSize: 0.4,
@@ -169,13 +154,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Row(
                 children: [
                   Icon(Icons.history_rounded,
-                      color: Color(0xFF6C63FF), size: 20),
+                      color: AppColors.primary, size: 20),
                   SizedBox(width: 8),
                   Text('更新日志',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A2E))),
+                          color: AppColors.textPrimary)),
                 ],
               ),
             ),
@@ -275,27 +260,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    if (_semesterStart != null) {
-      await _service.saveSemesterStart(_semesterStart!);
-    }
-    await _service.saveTotalWeeks(_totalWeeks);
-    await _service.saveDailySections(_dailySections);
-    await _service.saveSectionDuration(_sectionDuration);
-    await _service.saveSectionStartTimes(_sectionStartTimes);
-    await WidgetService().updateWidget();
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (mounted) {
+    try {
+      if (_semesterStart != null) {
+        await _service.saveSemesterStart(_semesterStart!);
+      }
+      await _service.saveTotalWeeks(_totalWeeks);
+      await _service.saveDailySections(_dailySections);
+      await _service.saveSectionDuration(_sectionDuration);
+      await _service.saveSectionStartTimes(_sectionStartTimes);
+      await WidgetService().updateWidget();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('设置已保存'),
-          backgroundColor: const Color(0xFF6C63FF),
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('save settings failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存设置失败，请重试')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -315,7 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: Color(0xFF6C63FF),
+            primary: AppColors.primary,
             onPrimary: Colors.white,
           ),
         ),
@@ -337,7 +329,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FF),
       appBar: AppBar(
         title: Text('$_scheduleName · 设置'),
         leading: IconButton(
@@ -365,10 +356,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           subtitle: Text('当前：$_scheduleName',
                               style: const TextStyle(
-                                  fontSize: 12, color: Color(0xFF8888AA))),
+                                  fontSize: 12, color: AppColors.textSecondary)),
                           trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
                           onTap: _openScheduleManager,
@@ -380,10 +371,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           subtitle: const Text('生成口令，可在另一台设备快速恢复',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF8888AA))),
+                                  fontSize: 12, color: AppColors.textSecondary)),
                           trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
                           onTap: _openExport,
@@ -395,10 +386,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           subtitle: const Text('粘贴口令，恢复课表到本机',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF8888AA))),
+                                  fontSize: 12, color: AppColors.textSecondary)),
                           trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
                           onTap: _openImport,
@@ -449,10 +440,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           subtitle: const Text('在桌面显示今天的课程',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF8888AA))),
+                                  fontSize: 12, color: AppColors.textSecondary)),
                           trailing: _addingWidget
                               ? const SizedBox(
                                   width: 20,
@@ -471,10 +462,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           subtitle: const Text('适用于系统没有弹出添加确认时',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF8888AA))),
+                                  fontSize: 12, color: AppColors.textSecondary)),
                           trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
                           onTap: _showManualWidgetGuide,
@@ -494,7 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildInfoTile('应用名称', 'Open Schedule'),
                         const Divider(height: 1),
-                        _buildInfoTile('版本', '1.1.2'),
+                        _buildInfoTile('版本', '1.1.2 (10)'),
                         const Divider(height: 1),
                         _buildInfoTile('开发者', 'Sora'),
                         const Divider(height: 1),
@@ -503,10 +494,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A2E))),
+                                  color: AppColors.textPrimary)),
                           trailing: const Icon(Icons.chevron_right_rounded,
                               color: Color(0xFFCCCCDD)),
-                          onTap: () => _showChangelog(context),
+                          onTap: _showChangelog,
                         ),
                       ],
                     )
@@ -529,8 +520,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16)),
                       ),
@@ -556,7 +545,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
+            color: AppColors.primary.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 3),
           ),
@@ -569,13 +558,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Icon(icon, color: const Color(0xFF6C63FF), size: 18),
+                Icon(icon, color: AppColors.primary, size: 18),
                 const SizedBox(width: 8),
                 Text(title,
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF6C63FF))),
+                        color: AppColors.primary)),
               ],
             ),
           ),
@@ -588,20 +577,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _requestPinWidget() async {
     setState(() => _addingWidget = true);
-    final result = await WidgetService().requestPinWidget();
-    if (!mounted) return;
-
-    setState(() => _addingWidget = false);
-    final accepted = result == 'accepted';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            accepted ? '已请求添加小卡片；如桌面未弹出确认，请手动添加' : _pinWidgetErrorText(result)),
-        backgroundColor: const Color(0xFF6C63FF),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    try {
+      final result = await WidgetService().requestPinWidget();
+      if (!mounted) return;
+      final accepted = result == 'accepted';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              accepted ? '已请求添加小卡片；如桌面未弹出确认，请手动添加' : _pinWidgetErrorText(result)),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _addingWidget = false);
+    }
   }
 
   String _pinWidgetErrorText(String result) {
@@ -616,14 +607,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showManualWidgetGuide() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      // 平板下限制宽度并居中
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    showAppModalSheet(
+      context,
       builder: (_) => Padding(
         padding: EdgeInsets.fromLTRB(
           20,
@@ -648,13 +633,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 18),
             const Row(
               children: [
-                Icon(Icons.widgets_rounded, color: Color(0xFF6C63FF), size: 20),
+                Icon(Icons.widgets_rounded, color: AppColors.primary, size: 20),
                 SizedBox(width: 8),
                 Text('手动添加桌面小卡片',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A2E))),
+                        color: AppColors.textPrimary)),
               ],
             ),
             const SizedBox(height: 16),
@@ -674,7 +659,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Text(
               '不同系统的入口名称可能略有不同。若快捷添加没有弹出确认，请使用这条方式。',
               style: TextStyle(
-                  fontSize: 12, color: Color(0xFF8888AA), height: 1.4),
+                  fontSize: 12, color: AppColors.textSecondary, height: 1.4),
             ),
           ],
         ),
@@ -692,9 +677,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E))),
+              color: AppColors.textPrimary)),
       subtitle: Text(formatted,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing:
           const Icon(Icons.chevron_right_rounded, color: Color(0xFFCCCCDD)),
       onTap: _pickDate,
@@ -708,9 +693,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E))),
+              color: AppColors.textPrimary)),
       subtitle: Text('当前：$_totalWeeks 周',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: _stepper(
         value: _totalWeeks,
         min: 1,
@@ -727,9 +712,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E))),
+              color: AppColors.textPrimary)),
       subtitle: Text('当前：$_dailySections 节',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: _stepper(
         value: _dailySections,
         min: 4,
@@ -746,9 +731,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E))),
+              color: AppColors.textPrimary)),
       subtitle: Text('当前：$_sectionDuration 分钟',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: _stepper(
         value: _sectionDuration,
         min: 20,
@@ -769,48 +754,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E))),
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           const Text('点击时间可修改，结束时间根据课程时长自动计算',
-              style: TextStyle(fontSize: 11, color: Color(0xFF8888AA))),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: List.generate(_dailySections, (i) {
-              final startTime = _sectionStartTimes.length > i
-                  ? _sectionStartTimes[i]
-                  : defaultSectionStartTimes.length > i
-                      ? defaultSectionStartTimes[i]
-                      : '08:00';
-              final endTime = _service.calcEndTime(startTime, _sectionDuration);
+              final section = i + 1;
+              final startTime =
+                  Schedule.sectionStartTimeAt(_sectionStartTimes, section);
+              final endTime =
+                  Schedule.calcEndTime(startTime, _sectionDuration);
               return GestureDetector(
                 onTap: () => _pickSectionTime(i),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0EFFF),
+                    color: AppColors.inputFill,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
+                        color: AppColors.primary.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     children: [
                       Text('第${i + 1}节',
                           style: const TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF6C63FF),
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w700)),
                       const SizedBox(height: 3),
                       Text(startTime,
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1A2E))),
+                              color: AppColors.textPrimary)),
                       Text(endTime,
                           style: const TextStyle(
-                              fontSize: 10, color: Color(0xFF8888AA))),
+                              fontSize: 10, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -828,9 +812,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E))),
+              color: AppColors.textPrimary)),
       trailing: Text(value,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF8888AA))),
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
     );
   }
 
@@ -839,10 +823,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
+        color: AppColors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, color: const Color(0xFF6C63FF), size: 18),
+      child: Icon(icon, color: AppColors.primary, size: 18),
     );
   }
 
@@ -858,19 +842,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         IconButton(
           icon: const Icon(Icons.remove_rounded),
-          onPressed: value > min ? () => onChanged(value - step) : null,
-          color: const Color(0xFF6C63FF),
+          onPressed: value > min
+              ? () => onChanged((value - step).clamp(min, max).toInt())
+              : null,
+          color: AppColors.primary,
           iconSize: 20,
         ),
         Text('$value',
             style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E))),
+                color: AppColors.textPrimary)),
         IconButton(
           icon: const Icon(Icons.add_rounded),
-          onPressed: value < max ? () => onChanged(value + step) : null,
-          color: const Color(0xFF6C63FF),
+          onPressed: value < max
+              ? () => onChanged((value + step).clamp(min, max).toInt())
+              : null,
+          color: AppColors.primary,
           iconSize: 20,
         ),
       ],
@@ -903,12 +891,12 @@ class _ChangelogEntry extends StatelessWidget {
               height: 12,
               decoration: BoxDecoration(
                 color: isLatest
-                    ? const Color(0xFF6C63FF)
+                    ? AppColors.primary
                     : const Color(0xFFCCCCDD),
                 shape: BoxShape.circle,
               ),
             ),
-            Container(width: 2, height: 80, color: const Color(0xFFEEEEF5)),
+            Container(width: 2, height: 80, color: AppColors.borderLight),
           ],
         ),
         const SizedBox(width: 12),
@@ -924,8 +912,8 @@ class _ChangelogEntry extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: isLatest
-                          ? const Color(0xFF6C63FF)
-                          : const Color(0xFFF0EFFF),
+                          ? AppColors.primary
+                          : AppColors.inputFill,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(version,
@@ -934,7 +922,7 @@ class _ChangelogEntry extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: isLatest
                                 ? Colors.white
-                                : const Color(0xFF8888AA))),
+                                : AppColors.textSecondary)),
                   ),
                   if (isLatest) ...[
                     const SizedBox(width: 8),
@@ -942,14 +930,14 @@ class _ChangelogEntry extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6584).withValues(alpha: 0.1),
+                        color: AppColors.secondary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('最新',
                           style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFFF6584))),
+                              color: AppColors.secondary)),
                     ),
                   ],
                 ],
@@ -962,13 +950,13 @@ class _ChangelogEntry extends StatelessWidget {
                       children: [
                         const Text('•  ',
                             style: TextStyle(
-                                color: Color(0xFF6C63FF),
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w700)),
                         Expanded(
                           child: Text(c,
                               style: const TextStyle(
                                   fontSize: 13,
-                                  color: Color(0xFF4A4A6A),
+                                  color: AppColors.textBody,
                                   height: 1.4)),
                         ),
                       ],
@@ -1002,7 +990,7 @@ class _GuideStep extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: const BoxDecoration(
-              color: Color(0xFF6C63FF),
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -1019,7 +1007,7 @@ class _GuideStep extends StatelessWidget {
               padding: const EdgeInsets.only(top: 2),
               child: Text(text,
                   style: const TextStyle(
-                      fontSize: 14, color: Color(0xFF4A4A6A), height: 1.4)),
+                      fontSize: 14, color: AppColors.textBody, height: 1.4)),
             ),
           ),
         ],

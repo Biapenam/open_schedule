@@ -29,6 +29,14 @@ class Course {
   static List<int> normalizeWeeks(Iterable<int> weeks) =>
       weeks.where((week) => week > 0).toSet().toList()..sort();
 
+  /// 判断两门课程是否时间冲突：
+  /// 同一天、上课周次有交集、且节次区间重叠。
+  static bool overlaps(Course a, Course b) {
+    if (a.dayOfWeek != b.dayOfWeek) return false;
+    if (!a.weeks.any(b.weeks.contains)) return false;
+    return a.startSection <= b.endSection && a.endSection >= b.startSection;
+  }
+
   // 深拷贝修改
   Course copyWith({
     String? id,

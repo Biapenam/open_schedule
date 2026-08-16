@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:uuid/uuid.dart';
 import '../models/course.dart';
+import '../models/schedule.dart';
 import '../services/course_service.dart';
 import '../services/widget_service.dart';
+import '../utils/app_colors.dart';
 
 class AddCourseScreen extends StatefulWidget {
   final int totalWeeks;
-  final int initialWeek;
   final Course? editingCourse;
 
   const AddCourseScreen({
     super.key,
     required this.totalWeeks,
-    required this.initialWeek,
     this.editingCourse,
   });
 
@@ -82,20 +82,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     super.dispose();
   }
 
-  String _getStartTime(int section) {
-    final idx = section - 1;
-    if (idx < _sectionStartTimes.length) {
-      return _sectionStartTimes[idx];
-    }
-    if (idx < defaultSectionStartTimes.length) {
-      return defaultSectionStartTimes[idx];
-    }
-    return '08:00';
-  }
+  String _getStartTime(int section) =>
+      Schedule.sectionStartTimeAt(_sectionStartTimes, section);
 
-  String _getEndTime(int section) {
-    return _service.calcEndTime(_getStartTime(section), _sectionDuration);
-  }
+  String _getEndTime(int section) =>
+      Schedule.calcEndTime(_getStartTime(section), _sectionDuration);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -106,6 +97,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       return;
     }
     final conflicts = await _findConflicts();
+    if (!mounted) return;
     if (conflicts.isNotEmpty) {
       final shouldContinue = await _showConflictDialog(conflicts);
       if (shouldContinue != true) return;
@@ -122,26 +114,42 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       startSection: _startSection,
       endSection: _endSection,
     );
-    if (_isEditing) {
-      await _service.updateCourse(course);
-    } else {
-      await _service.addCourse(course);
+    try {
+      if (_isEditing) {
+        await _service.updateCourse(course);
+      } else {
+        await _service.addCourse(course);
+      }
+      await WidgetService().updateWidget();
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('save course failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存课程失败，请重试')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    await WidgetService().updateWidget();
-    if (!mounted) return;
-    setState(() => _saving = false);
-    if (mounted) Navigator.pop(context, true);
   }
 
   Future<List<Course>> _findConflicts() async {
     final courses = await _service.loadCourses();
+    final candidate = Course(
+      id: _isEditing ? widget.editingCourse!.id : 'editing',
+      name: '',
+      teacher: '',
+      location: '',
+      colorValue: 0,
+      weeks: _selectedWeeks.toList(),
+      dayOfWeek: _dayOfWeek,
+      startSection: _startSection,
+      endSection: _endSection,
+    );
     return courses.where((course) {
       if (_isEditing && course.id == widget.editingCourse!.id) return false;
-      final sameDay = course.dayOfWeek == _dayOfWeek;
-      final sameWeek = course.weeks.any(_selectedWeeks.contains);
-      final sectionOverlaps = _startSection <= course.endSection &&
-          _endSection >= course.startSection;
-      return sameDay && sameWeek && sectionOverlaps;
+      return Course.overlaps(candidate, course);
     }).toList();
   }
 
@@ -165,11 +173,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
             child: const Text('继续保存'),
           ),
         ],
@@ -180,7 +183,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FF),
       appBar: AppBar(
         title: Text(_isEditing ? '编辑课程' : '添加课程'),
         leading: IconButton(
@@ -193,7 +195,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding:
@@ -275,34 +276,45 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   // ── 双栏 / 单栏共享的 section ─────────────────────────────
   Widget _sectionBasicInfo() {
-    return _buildSection('基本信息', [
-      _buildTextField(_nameCtrl, '课程名称 *', Icons.book_rounded,
-          validator: (v) => (v == null || v.trim().isEmpty) ? '请输入课程名称' : null),
-      const SizedBox(height: 12),
-      _buildTextField(_teacherCtrl, '任课教师（可选）', Icons.person_rounded),
-      const SizedBox(height: 12),
-      _buildTextField(_locationCtrl, '上课地点（可选）', Icons.location_on_rounded),
-    ]).animate().fadeIn(duration: 350.ms).slideY(begin: 0.2);
+    return _IntroGate(
+      child: _buildSection('基本信息', [
+        _buildTextField(_nameCtrl, '课程名称 *', Icons.book_rounded,
+            validator: (v) => (v == null || v.trim().isEmpty) ? '请输入课程名称' : null),
+        const SizedBox(height: 12),
+        _buildTextField(_teacherCtrl, '任课教师（可选）', Icons.person_rounded),
+        const SizedBox(height: 12),
+        _buildTextField(_locationCtrl, '上课地点（可选）', Icons.location_on_rounded),
+      ]),
+    );
   }
 
   Widget _sectionClassTime() {
-    return _buildSection('上课时间', [
-      _buildDayPicker(),
-      const SizedBox(height: 14),
-      _buildSectionPicker(),
-    ]).animate().fadeIn(delay: 100.ms, duration: 350.ms).slideY(begin: 0.2);
+    return _IntroGate(
+      delay: 100.ms,
+      child: _buildSection('上课时间', [
+        _buildDayPicker(),
+        const SizedBox(height: 14),
+        _buildSectionPicker(),
+      ]),
+    );
   }
 
   Widget _sectionWeeks(int crossAxisCount) {
-    return _buildSection('上课周次', [
-      _buildWeekPicker(crossAxisCount: crossAxisCount),
-    ]).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(begin: 0.2);
+    return _IntroGate(
+      delay: 200.ms,
+      child: _buildSection('上课周次', [
+        _buildWeekPicker(crossAxisCount: crossAxisCount),
+      ]),
+    );
   }
 
   Widget _sectionColor() {
-    return _buildSection('课程颜色', [
-      _buildColorPicker(),
-    ]).animate().fadeIn(delay: 300.ms, duration: 350.ms).slideY(begin: 0.2);
+    return _IntroGate(
+      delay: 300.ms,
+      child: _buildSection('课程颜色', [
+        _buildColorPicker(),
+      ]),
+    );
   }
 
   Widget _buildSection(String title, List<Widget> children) {
@@ -313,7 +325,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
+            color: AppColors.primary.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 3),
           ),
@@ -326,7 +338,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF6C63FF))),
+                  color: AppColors.primary)),
           const SizedBox(height: 12),
           ...children,
         ],
@@ -342,7 +354,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF6C63FF)),
+        prefixIcon: Icon(icon, size: 18, color: AppColors.primary),
       ),
     );
   }
@@ -371,11 +383,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     decoration: BoxDecoration(
                       color: _dayOfWeek == d
                           ? (d >= 6
-                              ? const Color(0xFFFF6584)
-                              : const Color(0xFF6C63FF))
+                              ? AppColors.secondary
+                              : AppColors.primary)
                           : (d >= 6
                               ? const Color(0xFFFFF0F3)
-                              : const Color(0xFFF0EFFF)),
+                              : AppColors.inputFill),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -386,8 +398,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                               color: _dayOfWeek == d
                                   ? Colors.white
                                   : (d >= 6
-                                      ? const Color(0xFFFF6584)
-                                      : const Color(0xFF4A4A6A)))),
+                                      ? AppColors.secondary
+                                      : AppColors.textBody))),
                     ),
                   ),
                 ),
@@ -444,7 +456,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           '${_getStartTime(_startSection)} — ${_getEndTime(_endSection)}',
           style: const TextStyle(
               fontSize: 12,
-              color: Color(0xFF6C63FF),
+              color: AppColors.primary,
               fontWeight: FontWeight.w600),
         ),
       ],
@@ -546,9 +558,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 duration: 150.ms,
                 decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFF6C63FF)
+                      ? AppColors.primary
                       : isOdd
-                          ? const Color(0xFFF0EFFF)
+                          ? AppColors.inputFill
                           : const Color(0xFFE8F4FD),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -559,7 +571,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                           fontWeight: FontWeight.w600,
                           color: selected
                               ? Colors.white
-                              : const Color(0xFF4A4A6A))),
+                              : AppColors.textBody)),
                 ),
               ),
             );
@@ -569,11 +581,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         // 图例
         const Row(
           children: [
-            _LegendDot(color: Color(0xFFF0EFFF), label: '单周'),
+            _LegendDot(color: AppColors.inputFill, label: '单周'),
             SizedBox(width: 12),
             _LegendDot(color: Color(0xFFE8F4FD), label: '双周'),
             SizedBox(width: 12),
-            _LegendDot(color: Color(0xFF6C63FF), label: '已选'),
+            _LegendDot(color: AppColors.primary, label: '已选'),
           ],
         ),
       ],
@@ -635,11 +647,11 @@ class _QuickChip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF6C63FF) : const Color(0xFFF0EFFF),
+          color: active ? AppColors.primary : AppColors.inputFill,
           borderRadius: BorderRadius.circular(20),
           border: active
               ? null
-              : Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.3)),
+              : Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -647,14 +659,14 @@ class _QuickChip extends StatelessWidget {
             if (icon != null) ...[
               Icon(icon,
                   size: 14,
-                  color: active ? Colors.white : const Color(0xFF6C63FF)),
+                  color: active ? Colors.white : AppColors.primary),
               const SizedBox(width: 4),
             ],
             Text(label,
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: active ? Colors.white : const Color(0xFF6C63FF))),
+                    color: active ? Colors.white : AppColors.primary)),
           ],
         ),
       ),
@@ -683,9 +695,38 @@ class _LegendDot extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(label,
-            style: const TextStyle(fontSize: 10, color: Color(0xFF8888AA))),
+            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
       ],
     );
+  }
+}
+
+/// 一次性入场动画门：动画只在首次挂载时播放一次，
+/// 避免父级 setState 重建时 section 反复重放入场动画造成闪烁。
+class _IntroGate extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+
+  const _IntroGate({required this.child, this.delay = Duration.zero});
+
+  @override
+  State<_IntroGate> createState() => _IntroGateState();
+}
+
+class _IntroGateState extends State<_IntroGate> {
+  bool _done = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_done) return widget.child;
+    return widget.child
+        .animate(
+          onComplete: (_) {
+            if (mounted) setState(() => _done = true);
+          },
+        )
+        .fadeIn(delay: widget.delay, duration: 350.ms)
+        .slideY(begin: 0.2);
   }
 }
 
@@ -710,7 +751,7 @@ class _SectionDropdown extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0EFFF),
+        color: AppColors.inputFill,
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButton<int>(
@@ -719,7 +760,7 @@ class _SectionDropdown extends StatelessWidget {
         underline: const SizedBox.shrink(),
         dropdownColor: Colors.white,
         style: const TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: AppColors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.w600),
         items: List.generate(max - min + 1, (i) {

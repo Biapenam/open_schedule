@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/course.dart';
-import '../services/course_service.dart';
+import '../models/schedule.dart';
+import '../utils/app_modal_sheet.dart';
 import 'course_detail_sheet.dart';
 import 'dart:math' as math;
+import '../utils/app_colors.dart';
 
 const double _cellHeight = 58.0;
 const double _sectionLabelWidth = 44.0;
@@ -40,21 +42,11 @@ class ScheduleGrid extends StatefulWidget {
 }
 
 class _ScheduleGridState extends State<ScheduleGrid> {
-  final CourseService _service = CourseService();
+  String _getStartTime(int section) =>
+      Schedule.sectionStartTimeAt(widget.sectionStartTimes, section);
 
-  String _getStartTime(int section) {
-    final idx = section - 1;
-    if (idx < widget.sectionStartTimes.length) {
-      return widget.sectionStartTimes[idx];
-    }
-    if (idx < defaultSectionStartTimes.length) {
-      return defaultSectionStartTimes[idx];
-    }
-    return '08:00';
-  }
-
-  String _getEndTime(int section) =>
-      _service.calcEndTime(_getStartTime(section), widget.sectionDuration);
+  String _getEndTime(int section) => Schedule.calcEndTime(
+      _getStartTime(section), widget.sectionDuration);
 
   /// 推算该周周一日期
   /// 优先用学期开始日期计算（准确且不受学期结束影响），
@@ -65,10 +57,11 @@ class _ScheduleGridState extends State<ScheduleGrid> {
               widget.semesterStart!.day)
           .add(Duration(days: (widget.weekNumber - 1) * 7));
     }
+    // 学期未设置：把本周一当作第 1 周的起点来推算各周日期
+    // （此时 currentWeek 为 -1，不能参与计算）
     final now = DateTime.now();
     final todayMonday = now.subtract(Duration(days: now.weekday - 1));
-    return todayMonday
-        .add(Duration(days: (widget.weekNumber - widget.currentWeek) * 7));
+    return todayMonday.add(Duration(days: (widget.weekNumber - 1) * 7));
   }
 
   /// 计算本周实际需要显示的天数（周末有课才显示）
@@ -112,7 +105,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
@@ -145,7 +138,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF6C63FF), Color(0xFF9C8FFF)],
+          colors: [AppColors.primary, Color(0xFF9C8FFF)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -184,7 +177,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                             child: Center(
                               child: Text('${dayDate.day}',
                                   style: const TextStyle(
-                                    color: Color(0xFF6C63FF),
+                                    color: AppColors.primary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
                                   )),
@@ -227,7 +220,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                   height: _cellHeight,
                   decoration: const BoxDecoration(
                     border: Border(
-                        bottom: BorderSide(color: Color(0xFFEEEEF5), width: 1)),
+                        bottom: BorderSide(color: AppColors.borderLight, width: 1)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -236,11 +229,11 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF6C63FF).withValues(alpha: 0.6),
+                            color: AppColors.primary.withValues(alpha: 0.6),
                           )),
                       Text(_getStartTime(section),
                           style: const TextStyle(
-                              fontSize: 8, color: Color(0xFF8888AA))),
+                              fontSize: 8, color: AppColors.textSecondary)),
                       Text(_getEndTime(section),
                           style: const TextStyle(
                               fontSize: 7, color: Color(0xFFBBBBCC))),
@@ -277,13 +270,13 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                       height: _cellHeight,
                       decoration: BoxDecoration(
                         color: isToday
-                            ? const Color(0xFF6C63FF).withValues(alpha: 0.04)
+                            ? AppColors.primary.withValues(alpha: 0.04)
                             : isWeekend
                                 ? const Color(0xFF000000).withValues(alpha: 0.01)
                                 : Colors.transparent,
                         border: const Border(
                           bottom:
-                              BorderSide(color: Color(0xFFEEEEF5), width: 1),
+                              BorderSide(color: AppColors.borderLight, width: 1),
                           right:
                               BorderSide(color: Color(0xFFF5F5FA), width: 0.5),
                         ),
@@ -305,11 +298,9 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                   blockHeight: (course.endSection - course.startSection + 1) *
                           _cellHeight -
                       4,
-                  onTap: () => showModalBottomSheet(
-                    context: context,
+                  onTap: () => showAppModalSheet(
+                    context,
                     backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    constraints: const BoxConstraints(maxWidth: 640),
                     builder: (_) => CourseDetailSheet(
                       course: course,
                       onDeleted: widget.onCourseDeleted,

@@ -21,11 +21,12 @@ class CourseService {
   // 注意不能是 static：跨 testWidgets 的 FakeAsync 区域会残留未完成的
   // Future 链，导致后续测试的写操作永远等待。
   Future<void> _writeQueue = Future<void>.value();
-  bool _migrated = false;
+  // 迁移单飞：正在进行的迁移 Future（完成后保持已完成的 Future）
+  Future<void>? _migrating;
 
   Future<T> _serializeWrite<T>(Future<T> Function() operation) {
     final result = _writeQueue.then((_) => operation());
-    _writeQueue = result.then<void>((_) {}, onError: (_, __) {});
+    _writeQueue = result.then<void>((_) {}, onError: (_, _) {});
     return result;
   }
 
@@ -34,13 +35,14 @@ class CourseService {
   // ─── 迁移与初始化 ──────────────────────────────────────────
 
   /// 确保数据已迁移到多课表结构。App 启动时调用一次即可。
-  Future<void> ensureMigrated() async {
-    if (_migrated) return;
+  /// 单飞（single-flight）：并发调用共享同一个迁移 Future，避免重复迁移。
+  Future<void> ensureMigrated() => _migrating ??= _doMigrate();
+
+  Future<void> _doMigrate() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getString(_schedulesKey) == null) {
       await _migrateFromLegacy(prefs);
     }
-    _migrated = true;
   }
 
   Future<void> _migrateFromLegacy(SharedPreferences prefs) async {
@@ -136,11 +138,6 @@ class CourseService {
     return prefs.getString(_activeScheduleIdKey);
   }
 
-  Future<void> setActiveScheduleId(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_activeScheduleIdKey, id);
-  }
-
   /// 获取当前激活的课表。若 active id 失效则回退到第一个。
   Future<Schedule?> getActiveSchedule() async {
     final schedules = await loadSchedules();
@@ -153,7 +150,8 @@ class CourseService {
 
   /// 切换当前激活课表
   Future<void> setActiveSchedule(String id) async {
-    await setActiveScheduleId(id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeScheduleIdKey, id);
   }
 
   /// 创建新课表，返回创建的课表（不自动切换）
@@ -190,7 +188,7 @@ class CourseService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_coursesKey(id));
       final activeId = await getActiveScheduleId();
-      if (activeId == id) await setActiveScheduleId(remaining.first.id);
+      if (activeId == id) await setActiveSchedule(remaining.first.id);
     });
   }
 
@@ -231,14 +229,6 @@ class CourseService {
     } catch (_) {
       return [];
     }
-  }
-
-  Future<void> saveCourses(List<Course> courses) async {
-    await _serializeWrite(() async {
-      final id = await getActiveScheduleId();
-      if (id == null) return;
-      await saveCoursesFor(id, courses);
-    });
   }
 
   /// 保存某指定课表的课程列表（用于导入课表等场景）
@@ -289,20 +279,10 @@ class CourseService {
 
   // ─── 学期设置（作用于当前激活课表元数据） ──────────────────
 
-  Future<DateTime?> loadSemesterStart() async {
-    final s = await getActiveSchedule();
-    return s?.semesterStart;
-  }
-
   Future<void> saveSemesterStart(DateTime date) async {
     final s = await getActiveSchedule();
     if (s == null) return;
     await saveScheduleMeta(s.copyWith(semesterStart: date));
-  }
-
-  Future<int> loadTotalWeeks() async {
-    final s = await getActiveSchedule();
-    return s?.totalWeeks ?? 20;
   }
 
   Future<void> saveTotalWeeks(int weeks) async {
@@ -352,17 +332,6 @@ class CourseService {
 
   // ─── 工具方法 ─────────────────────────────────────────────
 
-  /// 根据开始时间和时长计算结束时间字符串
-  String calcEndTime(String startTime, int durationMinutes) {
-    final parts = startTime.split(':');
-    final h = int.parse(parts[0]);
-    final m = int.parse(parts[1]);
-    final total = h * 60 + m + durationMinutes;
-    final eh = total ~/ 60;
-    final em = total % 60;
-    return '${eh.toString().padLeft(2, '0')}:${em.toString().padLeft(2, '0')}';
-  }
-
   /// 计算当前周（真实值，不 clamp）。
   /// 返回值可能 < 1（学期未开始）或 > totalWeeks（学期已结束），
   /// 调用方需自行判断是否在学期范围内。
@@ -372,24 +341,4 @@ class CourseService {
     if (diff < 0) return (diff ~/ 7) - 1;
     return (diff ~/ 7) + 1;
   }
-
-  List<Course> coursesForWeek(List<Course> all, int week) {
-    return all.where((c) => c.weeks.contains(week)).toList();
-  }
 }
-
-// 默认节次开始时间（12节）
-const List<String> defaultSectionStartTimes = [
-  '08:00',
-  '08:55',
-  '09:50',
-  '10:55',
-  '11:50',
-  '13:30',
-  '14:25',
-  '15:20',
-  '16:15',
-  '18:30',
-  '19:25',
-  '20:20',
-];

@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import '../models/course.dart';
+import '../models/schedule.dart';
 import '../services/course_service.dart';
 
 class WidgetService {
@@ -14,7 +16,7 @@ class WidgetService {
   /// 初始化：设置 App Group ID（Android 上等同于包名）
   static Future<void> init() async {
     // Android 不需要 AppGroupId，仅 iOS 需要；这里保留调用以兼容
-    await HomeWidget.setAppGroupId('com.example.schedule_app');
+    await HomeWidget.setAppGroupId('com.biapenam.open_schedule');
   }
 
   /// 推送今日课程数据到桌面小组件
@@ -55,20 +57,11 @@ class WidgetService {
 
       // 构建 JSON
       final courseList = todayCourses.map((c) {
-        final startIdx = c.startSection - 1;
-        final endIdx = c.endSection - 1;
-        final lastSectionIdx = endIdx < startTimes.length ? endIdx : startIdx;
-        final startTime = startIdx < startTimes.length
-            ? startTimes[startIdx]
-            : (startIdx < defaultSectionStartTimes.length
-                ? defaultSectionStartTimes[startIdx]
-                : '08:00');
-        final lastSectionStart = lastSectionIdx < startTimes.length
-            ? startTimes[lastSectionIdx]
-            : (lastSectionIdx < defaultSectionStartTimes.length
-                ? defaultSectionStartTimes[lastSectionIdx]
-                : '08:00');
-        final endTime = _courseService.calcEndTime(lastSectionStart, duration);
+        final startTime =
+            Schedule.sectionStartTimeAt(startTimes, c.startSection);
+        final lastSectionStart =
+            Schedule.sectionStartTimeAt(startTimes, c.endSection);
+        final endTime = Schedule.calcEndTime(lastSectionStart, duration);
         return {
           'name': c.name,
           'time': '$startTime-$endTime',
@@ -87,7 +80,8 @@ class WidgetService {
         androidName: _widgetName,
       );
     } catch (e) {
-      // Widget 更新失败不应影响主应用
+      // Widget 更新失败不应影响主应用，但记录日志便于排查
+      debugPrint('updateWidget failed: $e');
     }
   }
 
