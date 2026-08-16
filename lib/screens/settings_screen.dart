@@ -171,8 +171,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(20),
                 children: const [
                   _ChangelogEntry(
-                    version: 'v1.1.2',
+                    version: 'v1.1.3',
                     isLatest: true,
+                    changes: [
+                      '使用吃白饭的蓝色大肥鱼修复了一些已知问题、优化了使用体验和性能开销',
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  _ChangelogEntry(
+                    version: 'v1.1.2',
+                    isLatest: false,
                     changes: [
                       '新增了对Pad大屏设备的适配（测试中）',
                       '修复了已知问题',
@@ -485,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildInfoTile('应用名称', 'Open Schedule'),
                         const Divider(height: 1),
-                        _buildInfoTile('版本', '1.1.2 (10)'),
+                        _buildInfoTile('版本', '1.1.3 (11)'),
                         const Divider(height: 1),
                         _buildInfoTile('开发者', 'Sora'),
                         const Divider(height: 1),
