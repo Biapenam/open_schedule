@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '../utils/app_modal_sheet.dart';
+import '../utils/app_colors.dart';
 
 class WeekSelector extends StatelessWidget {
   final int currentWeek;
@@ -39,7 +41,7 @@ class WeekSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       blurRadius: 12,
                       offset: const Offset(0, 2),
                     ),
@@ -55,7 +57,7 @@ class WeekSelector extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF),
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -72,7 +74,7 @@ class WeekSelector extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A2E),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -104,14 +106,8 @@ class WeekSelector extends StatelessWidget {
   }
 
   void _showWeekPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      // 平板下限制宽度并居中
-      constraints: const BoxConstraints(maxWidth: 640),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    showAppModalSheet(
+      context,
       builder: (_) => _WeekPickerSheet(
         selectedWeek: selectedWeek,
         currentWeek: currentWeek,
@@ -145,7 +141,7 @@ class _ArrowButton extends StatelessWidget {
           boxShadow: onTap != null
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -155,7 +151,7 @@ class _ArrowButton extends StatelessWidget {
         child: Icon(
           icon,
           color:
-              onTap != null ? const Color(0xFF6C63FF) : const Color(0xFFCCCCDD),
+              onTap != null ? AppColors.primary : const Color(0xFFCCCCDD),
           size: 22,
         ),
       ),
@@ -198,7 +194,7 @@ class _WeekPickerSheet extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A2E),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -222,9 +218,9 @@ class _WeekPickerSheet extends StatelessWidget {
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFF6C63FF)
+                        ? AppColors.primary
                         : isCurrent
-                            ? const Color(0xFF6C63FF).withValues(alpha: 0.1)
+                            ? AppColors.primary.withValues(alpha: 0.1)
                             : const Color(0xFFF5F5FF),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -237,8 +233,8 @@ class _WeekPickerSheet extends StatelessWidget {
                         color: isSelected
                             ? Colors.white
                             : isCurrent
-                                ? const Color(0xFF6C63FF)
-                                : const Color(0xFF4A4A6A),
+                                ? AppColors.primary
+                                : AppColors.textBody,
                       ),
                     ),
                   ),

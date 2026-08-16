@@ -5,15 +5,18 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'services/course_service.dart';
 import 'services/widget_service.dart';
+import 'utils/responsive.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 初始化日期本地化数据（修复 LocaleDataException）
-  await initializeDateFormatting('zh_CN', null);
-  await WidgetService.init();
-  // 迁移旧数据到多课表结构（仅首次运行执行）
-  await CourseService().ensureMigrated();
-  await _setPreferredOrientations();
+  // 相互独立的初始化并行执行，缩短冷启动：
+  // 日期本地化数据、小组件服务、旧数据迁移、屏幕方向设置
+  await Future.wait([
+    initializeDateFormatting('zh_CN', null),
+    WidgetService.init(),
+    CourseService().ensureMigrated(),
+    _setPreferredOrientations(),
+  ]);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -29,7 +32,8 @@ void main() async {
 Future<void> _setPreferredOrientations() async {
   final view = WidgetsBinding.instance.platformDispatcher.views.first;
   final logicalSize = view.physicalSize / view.devicePixelRatio;
-  final isTablet = math.max(logicalSize.width, logicalSize.height) >= 600;
+  final isTablet =
+      math.max(logicalSize.width, logicalSize.height) >= Responsive.tabletBreakpoint;
   if (isTablet) {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,

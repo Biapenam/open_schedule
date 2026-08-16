@@ -1,5 +1,4 @@
 import 'package:uuid/uuid.dart';
-import '../services/course_service.dart' show defaultSectionStartTimes;
 
 /// 课表（学期）模型：每个课表拥有独立的学期设置与课程列表。
 class Schedule {
@@ -47,6 +46,40 @@ class Schedule {
     final match = RegExp(r'^([01]\d|2[0-3]):[0-5]\d$').firstMatch(value);
     return match != null;
   }
+
+  // ─── 节次时间工具 ─────────────────────────────────────────
+
+  /// 取某节课的开始时间（1 起）。
+  /// 越界时回退默认时间表，最后兜底 '08:00'。
+  static String sectionStartTimeAt(List<String> times, int section) {
+    final idx = section - 1;
+    if (idx >= 0 && idx < times.length) return times[idx];
+    if (idx >= 0 && idx < defaultSectionStartTimes.length) {
+      return defaultSectionStartTimes[idx];
+    }
+    return '08:00';
+  }
+
+  /// 本课表中某节课的开始时间。
+  String sectionStartTime(int section) =>
+      sectionStartTimeAt(sectionStartTimes, section);
+
+  /// 根据开始时间和时长计算结束时间字符串。
+  /// 跨天（超过 24:00）时 clamp 到 23:59，避免出现非法时间（如 25:30）。
+  static String calcEndTime(String startTime, int durationMinutes) {
+    final parts = startTime.split(':');
+    final h = int.parse(parts[0]);
+    final m = int.parse(parts[1]);
+    final total = h * 60 + m + durationMinutes;
+    if (total >= 24 * 60) return '23:59';
+    final eh = total ~/ 60;
+    final em = total % 60;
+    return '${eh.toString().padLeft(2, '0')}:${em.toString().padLeft(2, '0')}';
+  }
+
+  /// 本课表中某节课的结束时间。
+  String sectionEndTime(int section) =>
+      calcEndTime(sectionStartTime(section), sectionDuration);
 
   Schedule copyWith({
     String? id,
@@ -115,4 +148,20 @@ class Schedule {
   }
 
 }
+
+// 默认节次开始时间（12节）
+const List<String> defaultSectionStartTimes = [
+  '08:00',
+  '08:55',
+  '09:50',
+  '10:55',
+  '11:50',
+  '13:30',
+  '14:25',
+  '15:20',
+  '16:15',
+  '18:30',
+  '19:25',
+  '20:20',
+];
 

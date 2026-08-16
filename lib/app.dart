@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'utils/app_colors.dart';
 
 class ScheduleApp extends StatelessWidget {
   const ScheduleApp({super.key});
@@ -15,9 +16,9 @@ class ScheduleApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme() {
-    const primaryColor = Color(0xFF6C63FF);
-    const secondaryColor = Color(0xFFFF6584);
-    const bgColor = Color(0xFFF8F7FF);
+    const primaryColor = AppColors.primary;
+    const secondaryColor = AppColors.secondary;
+    const bgColor = AppColors.background;
     const surfaceColor = Colors.white;
 
     return ThemeData(
@@ -34,16 +35,16 @@ class ScheduleApp extends StatelessWidget {
         displayLarge: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF1A1A2E),
+          color: AppColors.textPrimary,
         ),
         titleLarge: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF1A1A2E),
+          color: AppColors.textPrimary,
         ),
         bodyMedium: TextStyle(
           fontSize: 13,
-          color: Color(0xFF4A4A6A),
+          color: AppColors.textBody,
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -54,9 +55,23 @@ class ScheduleApp extends StatelessWidget {
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF1A1A2E),
+          color: AppColors.textPrimary,
         ),
-        iconTheme: IconThemeData(color: Color(0xFF1A1A2E)),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primaryColor,
@@ -66,7 +81,7 @@ class ScheduleApp extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF0EFFF),
+        fillColor: AppColors.inputFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -77,7 +92,7 @@ class ScheduleApp extends StatelessWidget {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: const TextStyle(color: Color(0xFF8888AA)),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
         hintStyle: const TextStyle(color: Color(0xFFAAAAAA)),
       ),
     );

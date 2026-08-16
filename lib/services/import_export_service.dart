@@ -6,12 +6,10 @@ import '../models/schedule.dart';
 
 /// 导出的课表解析结果
 class ExportData {
-  final int version;
   final Schedule schedule; // id 已重新生成
   final List<Course> courses; // id 已重新生成
 
   const ExportData({
-    required this.version,
     required this.schedule,
     required this.courses,
   });
@@ -115,21 +113,23 @@ class ImportExportService {
       sectionDuration: _readInt(map, 'sectionDuration', 45),
     );
 
-    return ExportData(version: version, schedule: schedule, courses: courses);
+    return ExportData(schedule: schedule, courses: courses);
   }
 
   // ── 内部工具 ─────────────────────────────────────────────
 
   static Course _courseFromMap(Map<String, dynamic> c) {
-    final startSection = _readInt(c, 'startSection', 1).clamp(1, 16);
-    final endSection =
-        _readInt(c, 'endSection', startSection).clamp(startSection, 16);
+    final startSection =
+        _readInt(c, 'startSection', 1).clamp(1, Course.maxSection).toInt();
+    final endSection = _readInt(c, 'endSection', startSection)
+        .clamp(startSection, Course.maxSection)
+        .toInt();
     return Course(
       id: const Uuid().v4(),
       name: (c['name'] ?? '').toString(),
       teacher: (c['teacher'] ?? '').toString(),
       location: (c['location'] ?? '').toString(),
-      colorValue: _readInt(c, 'colorValue', 0xFF6C63FF),
+      colorValue: _readInt(c, 'colorValue', courseColors[0]),
       weeks: ((c['weeks'] is List) ? (c['weeks'] as List) : const [])
           .whereType<num>()
           .map((e) => e.toInt())

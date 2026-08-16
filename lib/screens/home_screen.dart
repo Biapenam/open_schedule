@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/course.dart';
+import '../models/schedule.dart';
 import '../services/course_service.dart';
 import '../services/widget_service.dart';
 import '../utils/responsive.dart';
@@ -10,6 +11,7 @@ import '../widgets/schedule_manager_sheet.dart';
 import '../widgets/week_selector.dart';
 import 'add_course_screen.dart';
 import 'settings_screen.dart';
+import '../utils/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -148,11 +150,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final result = await Navigator.push<bool>(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, anim, __) => AddCourseScreen(
+        pageBuilder: (_, anim, _) => AddCourseScreen(
           totalWeeks: _totalWeeks,
-          initialWeek: _selectedWeek,
         ),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
+        transitionsBuilder: (_, anim, _, child) => SlideTransition(
           position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
               .animate(
                   CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
@@ -192,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FF),
       body: SafeArea(
         // 平板：内容整体限宽居中，避免横屏下横跨整屏；
         // 手机：不限制宽度，保持现有单栏布局。
@@ -200,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           builder: (context, constraints) {
             final contentMaxWidth =
                 constraints.maxWidth >= Responsive.tabletBreakpoint
-                    ? math.min(constraints.maxWidth, 960.0)
+                    ? math.min(constraints.maxWidth, Responsive.contentMaxWidth)
                     : constraints.maxWidth;
             return Center(
               child: ConstrainedBox(
@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: Theme.of(context).textTheme.displayLarge),
                     const SizedBox(width: 6),
                     const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6C63FF), size: 28),
+                        color: AppColors.primary, size: 28),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             icon: const Icon(Icons.tune_rounded),
             style: IconButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF6C63FF),
+              foregroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
@@ -326,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     VoidCallback onTap;
 
     if (_semesterNotSet) {
-      color = const Color(0xFF6C63FF);
+      color = AppColors.primary;
       icon = Icons.info_outline_rounded;
       message = '请先在设置中选择学期开始日期';
       onTap = _openSettings;
