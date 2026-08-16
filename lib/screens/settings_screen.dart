@@ -104,7 +104,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => ImportSheet(service: _service),
+      // 键盘弹出时把面板抬到输入法上方，避免挡住口令输入框
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+        child: ImportSheet(service: _service),
+      ),
     );
     if (result == true) {
       _load();

@@ -207,4 +207,56 @@ void main() {
     expect(courses.length, 2); // 课程被替换为口令中的课程
     expect(courses.any((c) => c.name == '旧课程'), isFalse);
   });
+
+  testWidgets('导入弹窗：键盘弹出时口令输入框不被遮挡', (WidgetTester tester) async {
+    // 模拟输入法弹出（底部 300 逻辑像素；viewInsets 以物理像素为单位，
+    // MediaQuery 会按 devicePixelRatio 换算成逻辑像素）
+    tester.view.viewInsets =
+        FakeViewPadding(bottom: 300 * tester.view.devicePixelRatio);
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final service = CourseService();
+    await service.ensureMigrated();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                // 与 settings_screen 的 _openImport 一致：用 viewInsets 抬升面板
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.white,
+                  isScrollControlled: true,
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  builder: (sheetContext) => Padding(
+                    padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+                    child: ImportSheet(service: service),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // 聚焦口令输入框，触发自动滚动到可见区域
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+
+    final rect = tester.getRect(find.byType(TextField));
+    // 默认测试窗口 800x600，键盘 300 → 键盘上方可视区域为 0..300
+    const visibleBottom = 600.0 - 300.0;
+    expect(rect.top, greaterThanOrEqualTo(0),
+        reason: '输入框顶部不应超出屏幕顶部，实际 top=${rect.top}');
+    expect(rect.bottom, lessThanOrEqualTo(visibleBottom + 1),
+        reason: '输入框底部不应被键盘遮挡，实际 bottom=${rect.bottom}');
+  });
 }
