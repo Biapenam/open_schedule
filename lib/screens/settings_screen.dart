@@ -294,8 +294,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    if (_semesterStart != null)
+    if (_semesterStart != null) {
       await _service.saveSemesterStart(_semesterStart!);
+    }
     await _service.saveTotalWeeks(_totalWeeks);
     await _service.saveDailySections(_dailySections);
     await _service.saveSectionDuration(_sectionDuration);
@@ -574,7 +575,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.06),
+            color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 3),
           ),
@@ -811,7 +812,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: const Color(0xFFF0EFFF),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: const Color(0xFF6C63FF).withOpacity(0.2)),
+                        color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     children: [
@@ -857,7 +858,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFF6C63FF).withOpacity(0.1),
+        color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icon, color: const Color(0xFF6C63FF), size: 18),
@@ -960,7 +961,7 @@ class _ChangelogEntry extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6584).withOpacity(0.1),
+                        color: const Color(0xFFFF6584).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('最新',

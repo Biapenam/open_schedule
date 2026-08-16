@@ -36,7 +36,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _semesterNotSet = false;
 
   String _scheduleName = '我的课表';
-  String? _scheduleId;
 
   PageController? _pageController;
   final ValueNotifier<int> _selectedWeekNotifier = ValueNotifier(1);
@@ -111,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _semesterNotStarted = notStarted;
       _semesterNotSet = notSet;
       _scheduleName = schedule?.name ?? '我的课表';
-      _scheduleId = schedule?.id;
       _loading = false;
     });
     _fabController.forward();
@@ -301,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withOpacity(0.7))),
+                                .withValues(alpha: 0.7))),
               ],
             ),
           ),
@@ -353,9 +351,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [

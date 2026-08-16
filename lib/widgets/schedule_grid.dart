@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
-import '../services/course_service.dart' show defaultSectionStartTimes;
+import '../services/course_service.dart';
 import 'course_detail_sheet.dart';
 import 'dart:math' as math;
 
@@ -40,26 +40,21 @@ class ScheduleGrid extends StatefulWidget {
 }
 
 class _ScheduleGridState extends State<ScheduleGrid> {
+  final CourseService _service = CourseService();
+
   String _getStartTime(int section) {
     final idx = section - 1;
     if (idx < widget.sectionStartTimes.length) {
       return widget.sectionStartTimes[idx];
     }
-    if (idx < defaultSectionStartTimes.length)
+    if (idx < defaultSectionStartTimes.length) {
       return defaultSectionStartTimes[idx];
+    }
     return '08:00';
   }
 
   String _getEndTime(int section) =>
-      _calcEndTime(_getStartTime(section), widget.sectionDuration);
-
-  String _calcEndTime(String startTime, int durationMinutes) {
-    final parts = startTime.split(':');
-    final h = int.tryParse(parts.first) ?? 8;
-    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
-    final total = h * 60 + m + durationMinutes;
-    return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
-  }
+      _service.calcEndTime(_getStartTime(section), widget.sectionDuration);
 
   /// 推算该周周一日期
   /// 优先用学期开始日期计算（准确且不受学期结束影响），
@@ -117,7 +112,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6C63FF).withOpacity(0.08),
+                  color: const Color(0xFF6C63FF).withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
@@ -157,7 +152,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
       ),
       child: Row(
         children: [
-          SizedBox(width: _sectionLabelWidth),
+          const SizedBox(width: _sectionLabelWidth),
           for (int d = 1; d <= visibleDays; d++)
             Expanded(
               child: Builder(builder: (context) {
@@ -241,7 +236,7 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF6C63FF).withOpacity(0.6),
+                            color: const Color(0xFF6C63FF).withValues(alpha: 0.6),
                           )),
                       Text(_getStartTime(section),
                           style: const TextStyle(
@@ -282,9 +277,9 @@ class _ScheduleGridState extends State<ScheduleGrid> {
                       height: _cellHeight,
                       decoration: BoxDecoration(
                         color: isToday
-                            ? const Color(0xFF6C63FF).withOpacity(0.04)
+                            ? const Color(0xFF6C63FF).withValues(alpha: 0.04)
                             : isWeekend
-                                ? const Color(0xFF000000).withOpacity(0.01)
+                                ? const Color(0xFF000000).withValues(alpha: 0.01)
                                 : Colors.transparent,
                         border: const Border(
                           bottom:
@@ -354,7 +349,7 @@ class _CourseBlock extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.88), color],
+            colors: [color.withValues(alpha: 0.88), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -451,7 +446,7 @@ class _CourseBlock extends StatelessWidget {
 
           // 地点
           if (locationLines > 0) ...[
-            SizedBox(height: gap),
+            const SizedBox(height: gap),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -480,7 +475,7 @@ class _CourseBlock extends StatelessWidget {
 
           // 教师
           if (showTeacher) ...[
-            SizedBox(height: gap),
+            const SizedBox(height: gap),
             Row(
               children: [
                 Icon(Icons.person_rounded,

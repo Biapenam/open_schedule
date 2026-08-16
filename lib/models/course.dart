@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class Course {
   static const maxSection = 16;
   final String id;
@@ -105,40 +103,7 @@ class Course {
     );
   }
 
-  String toJsonString() => jsonEncode(toJson());
-  factory Course.fromJsonString(String s) => Course.fromJson(jsonDecode(s));
 }
-
-// 节次时间对照表
-const List<String> sectionTimes = [
-  '08:00',
-  '08:55',
-  '09:50',
-  '10:55',
-  '11:50',
-  '13:30',
-  '14:25',
-  '15:20',
-  '16:15',
-  '18:30',
-  '19:25',
-  '20:20',
-];
-
-const List<String> sectionEndTimes = [
-  '08:45',
-  '09:40',
-  '10:35',
-  '11:40',
-  '12:35',
-  '14:15',
-  '15:10',
-  '16:05',
-  '17:00',
-  '19:15',
-  '20:10',
-  '21:05',
-];
 
 // 预设课程颜色
 const List<int> courseColors = [
@@ -155,13 +120,4 @@ const List<int> courseColors = [
 ];
 
 const List<String> dayNames = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const List<String> dayShortNames = [
-  '',
-  'Mon',
-  'Tue',
-  'Wed',
-  'Thu',
-  'Fri',
-  'Sat',
-  'Sun'
-];
+

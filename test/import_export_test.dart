@@ -103,7 +103,7 @@ void main() {
 
   // ── 导入流程集成测试 ─────────────────────────────────────
 
-  Future<void> _openImportSheet(
+  Future<void> openImportSheet(
       WidgetTester tester, CourseService service) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -128,7 +128,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> _parseAndTapImport(WidgetTester tester, String code) async {
+  Future<void> parseAndTapImport(WidgetTester tester, String code) async {
     await tester.enterText(find.byType(TextField), code);
     await tester.tap(find.text('解析口令'));
     await tester.pumpAndSettle();
@@ -145,8 +145,8 @@ void main() {
     await service.ensureMigrated();
     final code = ImportExportService.encode(buildSchedule(), buildCourses());
 
-    await _openImportSheet(tester, service);
-    await _parseAndTapImport(tester, code);
+    await openImportSheet(tester, service);
+    await parseAndTapImport(tester, code);
 
     final schedules = await service.loadSchedules();
     final imported = schedules.where((s) => s.name == '2026春季学期');
@@ -163,8 +163,8 @@ void main() {
     await service.createSchedule('2026春季学期'); // 制造同名
     final code = ImportExportService.encode(buildSchedule(), buildCourses());
 
-    await _openImportSheet(tester, service);
-    await _parseAndTapImport(tester, code);
+    await openImportSheet(tester, service);
+    await parseAndTapImport(tester, code);
 
     expect(find.text('已存在同名课表'), findsOneWidget);
     await tester.tap(find.text('另存为新课表'));
@@ -194,8 +194,8 @@ void main() {
     ]);
     final code = ImportExportService.encode(buildSchedule(), buildCourses());
 
-    await _openImportSheet(tester, service);
-    await _parseAndTapImport(tester, code);
+    await openImportSheet(tester, service);
+    await parseAndTapImport(tester, code);
 
     await tester.tap(find.text('覆盖'));
     await tester.pumpAndSettle();

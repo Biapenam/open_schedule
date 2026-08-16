@@ -213,7 +213,7 @@ class CourseService {
   Future<List<Course>> loadCourses() async {
     final id = await getActiveScheduleId();
     if (id == null) return [];
-    return loadCoursesFor(id ?? '');
+    return loadCoursesFor(id);
   }
 
   Future<List<Course>> loadCoursesFor(String scheduleId) async {
