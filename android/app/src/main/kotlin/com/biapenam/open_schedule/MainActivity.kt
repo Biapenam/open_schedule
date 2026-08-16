@@ -1,4 +1,4 @@
-package com.example.schedule_app
+package com.biapenam.open_schedule
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -41,7 +41,7 @@ class MainActivity : FlutterActivity() {
             val callbackIntent = Intent(this, WidgetPinnedReceiver::class.java)
             val successCallback = PendingIntent.getBroadcast(
                 this,
-                1001,
+                REQUEST_PIN_WIDGET_CODE,
                 callbackIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -65,9 +65,9 @@ class MainActivity : FlutterActivity() {
         val message = when (reason) {
             "unsupported_android_version",
             "launcher_rejected",
-            "illegal_state" -> "请在桌面小组件列表中添加 Open Schedule"
-            "launcher_not_supported" -> "当前桌面不支持快捷添加小卡片"
-            else -> "当前桌面无法快捷添加小卡片"
+            "illegal_state" -> getString(R.string.widget_pin_fallback)
+            "launcher_not_supported" -> getString(R.string.widget_pin_unsupported)
+            else -> getString(R.string.widget_pin_failed)
         }
         Log.w(TAG, "requestPinWidget failed: $reason")
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -77,5 +77,6 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "open_schedule/widget"
         private const val TAG = "OpenScheduleWidget"
+        private const val REQUEST_PIN_WIDGET_CODE = 1001
     }
 }

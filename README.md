@@ -11,8 +11,11 @@
 - 设置课程名称、老师、地点、星期、节次、上课周次和颜色。
 - 支持单周、双周、全选、清空等周次选择。
 - 设置学期开始日期、总周数、每天节数、每节课时长和每节开始时间。
+- 多课表管理：新建、切换、重命名、删除课表，不同课表独立保存学期设置与课程。
+- 口令导入导出：生成课表口令，在另一台设备粘贴即可恢复课表。
 - 如果周末有课，课程表会显示周六、周日。
 - 保存课程时会提示同一天、同一周、节次重叠的课程。
+- 支持平板大屏自适应布局（横竖屏、限宽居中）。
 - 本地保存数据，使用 `shared_preferences`。
 - Android 桌面小组件可以显示当天课程。
 
@@ -55,18 +58,24 @@ lib/
 ├── main.dart
 ├── app.dart
 ├── models/
-│   └── course.dart
+│   ├── course.dart
+│   └── schedule.dart
 ├── services/
 │   ├── course_service.dart
-│   └── widget_service.dart
+│   ├── widget_service.dart
+│   └── import_export_service.dart
 ├── screens/
 │   ├── home_screen.dart
 │   ├── add_course_screen.dart
 │   └── settings_screen.dart
+├── utils/
+│   └── responsive.dart
 └── widgets/
     ├── schedule_grid.dart
     ├── week_selector.dart
-    └── course_detail_sheet.dart
+    ├── course_detail_sheet.dart
+    ├── schedule_manager_sheet.dart
+    └── import_export_sheet.dart
 ```
 
 Android 小组件相关文件主要在：
@@ -95,9 +104,12 @@ android/app/src/main/res/xml/schedule_widget_info.xml
 
 ## 更新记录
 
+> 完整更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+
 ### v1.1.2
 
 - 新增了对Pad大屏设备的适配（测试中）。
+- 新增了使用口令在不同设备间传输课表信息的功能。
 - 修复了已知问题。
 - 优化了性能开销。
 

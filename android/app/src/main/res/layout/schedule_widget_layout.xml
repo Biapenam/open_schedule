@@ -19,7 +19,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="今日课程"
+            android:text="@string/widget_today_courses"
             android:textSize="13sp"
             android:textColor="#FF6C63FF"
             android:textStyle="bold" />
@@ -28,7 +28,7 @@
             android:id="@+id/widget_app_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Open Schedule"
+            android:text="@string/app_name"
             android:textSize="10sp"
             android:textColor="#88888888" />
 
@@ -52,7 +52,7 @@
         android:textSize="12sp"
         android:textColor="#FF1A1A2E"
         android:ellipsize="end"
-        android:singleLine="true"
+        android:maxLines="1"
         android:paddingBottom="3dp" />
 
     <!-- 课程条目 2 -->
@@ -64,7 +64,7 @@
         android:textSize="12sp"
         android:textColor="#FF1A1A2E"
         android:ellipsize="end"
-        android:singleLine="true"
+        android:maxLines="1"
         android:paddingBottom="3dp" />
 
     <!-- 课程条目 3 -->
@@ -76,7 +76,7 @@
         android:textSize="12sp"
         android:textColor="#FF1A1A2E"
         android:ellipsize="end"
-        android:singleLine="true"
+        android:maxLines="1"
         android:paddingBottom="3dp" />
 
     <!-- 底部提示（还有N节课 / 共N节课） -->

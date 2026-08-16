@@ -54,7 +54,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: AddCourseScreen(totalWeeks: 20, initialWeek: 1),
+        home: AddCourseScreen(totalWeeks: 20),
       ),
     );
     await tester.pumpAndSettle();

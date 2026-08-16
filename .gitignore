@@ -19,9 +19,15 @@ migrate_working_dir/
 .idea/
 
 # The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code which you may wish to be included in version control. 本项目保留本机
+# 个人配置不入库，故启用忽略。
+.vscode/
+
+# Android signing keys & crash dumps
+*.jks
+*.keystore
+key.properties
+*.hprof
 
 # Flutter/Dart/Pub related
 **/doc/api/
