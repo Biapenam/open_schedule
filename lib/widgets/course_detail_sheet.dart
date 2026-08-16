@@ -27,26 +27,21 @@ class CourseDetailSheet extends StatefulWidget {
 }
 
 class _CourseDetailSheetState extends State<CourseDetailSheet> {
+  final CourseService _service = CourseService();
+
   String _getStartTime(int section) {
     final idx = section - 1;
     if (idx < widget.sectionStartTimes.length) {
       return widget.sectionStartTimes[idx];
     }
-    if (idx < defaultSectionStartTimes.length)
+    if (idx < defaultSectionStartTimes.length) {
       return defaultSectionStartTimes[idx];
+    }
     return '08:00';
   }
 
   String _getEndTime(int section) =>
-      _calcEndTime(_getStartTime(section), widget.sectionDuration);
-
-  String _calcEndTime(String startTime, int durationMinutes) {
-    final parts = startTime.split(':');
-    final h = int.tryParse(parts.first) ?? 8;
-    final m = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
-    final total = h * 60 + m + durationMinutes;
-    return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
-  }
+      _service.calcEndTime(_getStartTime(section), widget.sectionDuration);
 
   @override
   Widget build(BuildContext context) {
@@ -83,14 +78,14 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.85), color],
+                colors: [color.withValues(alpha: 0.85), color],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: color.withOpacity(0.35),
+                    color: color.withValues(alpha: 0.35),
                     blurRadius: 20,
                     offset: const Offset(0, 6)),
               ],
@@ -126,7 +121,7 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle),
                   child: const Icon(Icons.book_rounded,
                       color: Colors.white, size: 28),
@@ -205,12 +200,12 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
       if (weeks[i] == prev + 1) {
         prev = weeks[i];
       } else {
-        result.add(start == prev ? '第$start周' : '第$start-${prev}周');
+        result.add(start == prev ? '第$start周' : '第$start-$prev周');
         start = weeks[i];
         prev = weeks[i];
       }
     }
-    result.add(start == prev ? '第$start周' : '第$start-${prev}周');
+    result.add(start == prev ? '第$start周' : '第$start-$prev周');
     return result.join('，');
   }
 
@@ -233,7 +228,7 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
       ),
     );
     if (confirm == true && context.mounted) {
-      await CourseService().deleteCourse(widget.course.id);
+      await _service.deleteCourse(widget.course.id);
       if (context.mounted) Navigator.pop(context);
       widget.onDeleted();
     }
@@ -255,7 +250,7 @@ class _CourseDetailSheetState extends State<CourseDetailSheet> {
                   CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: 400.ms,
       ),
     );
     if (result == true) widget.onEdited();
@@ -283,7 +278,7 @@ class _InfoRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18),
         ),
@@ -330,9 +325,9 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

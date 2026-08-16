@@ -84,9 +84,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   String _getStartTime(int section) {
     final idx = section - 1;
-    if (idx < _sectionStartTimes.length) return _sectionStartTimes[idx];
-    if (idx < defaultSectionStartTimes.length)
+    if (idx < _sectionStartTimes.length) {
+      return _sectionStartTimes[idx];
+    }
+    if (idx < defaultSectionStartTimes.length) {
       return defaultSectionStartTimes[idx];
+    }
     return '08:00';
   }
 
@@ -310,7 +313,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.06),
+            color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, 3),
           ),
@@ -564,13 +567,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         ),
         const SizedBox(height: 6),
         // 图例
-        Row(
+        const Row(
           children: [
-            _LegendDot(color: const Color(0xFFF0EFFF), label: '单周'),
-            const SizedBox(width: 12),
-            _LegendDot(color: const Color(0xFFE8F4FD), label: '双周'),
-            const SizedBox(width: 12),
-            _LegendDot(color: const Color(0xFF6C63FF), label: '已选'),
+            _LegendDot(color: Color(0xFFF0EFFF), label: '单周'),
+            SizedBox(width: 12),
+            _LegendDot(color: Color(0xFFE8F4FD), label: '双周'),
+            SizedBox(width: 12),
+            _LegendDot(color: Color(0xFF6C63FF), label: '已选'),
           ],
         ),
       ],
@@ -594,10 +597,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               color: color,
               shape: BoxShape.circle,
               border: selected
-                  ? Border.all(color: color.withOpacity(0.5), width: 3)
+                  ? Border.all(color: color.withValues(alpha: 0.5), width: 3)
                   : null,
               boxShadow: selected
-                  ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 12)]
+                  ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 12)]
                   : [],
             ),
             child: selected
@@ -636,7 +639,7 @@ class _QuickChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: active
               ? null
-              : Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+              : Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -675,7 +678,7 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
           ),
         ),
         const SizedBox(width: 4),

@@ -39,7 +39,7 @@ class WeekSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C63FF).withOpacity(0.1),
+                      color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
                       blurRadius: 12,
                       offset: const Offset(0, 2),
                     ),
@@ -140,12 +140,12 @@ class _ArrowButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: onTap != null ? Colors.white : Colors.white.withOpacity(0.5),
+          color: onTap != null ? Colors.white : Colors.white.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           boxShadow: onTap != null
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6C63FF).withOpacity(0.1),
+                    color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -224,7 +224,7 @@ class _WeekPickerSheet extends StatelessWidget {
                     color: isSelected
                         ? const Color(0xFF6C63FF)
                         : isCurrent
-                            ? const Color(0xFF6C63FF).withOpacity(0.1)
+                            ? const Color(0xFF6C63FF).withValues(alpha: 0.1)
                             : const Color(0xFFF5F5FF),
                     borderRadius: BorderRadius.circular(10),
                   ),

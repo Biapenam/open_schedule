@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import '../services/course_service.dart' show defaultSectionStartTimes;
 
@@ -115,6 +114,5 @@ class Schedule {
     );
   }
 
-  String toJsonString() => jsonEncode(toJson());
-  factory Schedule.fromJsonString(String s) => Schedule.fromJson(jsonDecode(s));
 }
+

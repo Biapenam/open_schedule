@@ -79,7 +79,7 @@ class ExportSheet extends StatelessWidget {
                 color: const Color(0xFFF0EFFF),
                 borderRadius: BorderRadius.circular(14),
                 border:
-                    Border.all(color: const Color(0xFF6C63FF).withOpacity(0.2)),
+                    Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.2)),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -306,10 +306,10 @@ class _ImportSheetState extends State<ImportSheet> {
               maxLines: 3,
               minLines: 2,
               style: const TextStyle(fontSize: 13, height: 1.5),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: '例如：OS1:xxxxx...（长按可粘贴）',
                 hintStyle:
-                    const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+                    TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
               ),
               onSubmitted: (_) => _parse(),
             ),
@@ -335,7 +335,7 @@ class _ImportSheetState extends State<ImportSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6584).withOpacity(0.1),
+                  color: const Color(0xFFFF6584).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -398,7 +398,7 @@ class _ImportSheetState extends State<ImportSheet> {
       decoration: BoxDecoration(
         color: const Color(0xFFF0EFFF),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.25)),
+        border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

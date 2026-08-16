@@ -269,7 +269,7 @@ class _ScheduleManagerSheetState extends State<ScheduleManagerSheet> {
         height: 40,
         decoration: BoxDecoration(
           color: (isActive ? const Color(0xFF6C63FF) : const Color(0xFFAAAAAA))
-              .withOpacity(0.12),
+              .withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
